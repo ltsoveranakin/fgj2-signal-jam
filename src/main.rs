@@ -12,7 +12,11 @@ fn main() {
     let mut app = App::new();
 
     app.add_plugins(DefaultPlugins)
-        .add_plugins((TilemapPlugin, RapierPhysicsPlugin::<NoUserData>::default()))
+        .add_plugins((
+            TilemapPlugin,
+            RapierPhysicsPlugin::<NoUserData>::default(),
+            RapierDebugRenderPlugin::default(),
+        ))
         .add_plugins((EguiPlugin::default(), WorldInspectorPlugin::default()))
         .add_plugins(GamePlugin);
 

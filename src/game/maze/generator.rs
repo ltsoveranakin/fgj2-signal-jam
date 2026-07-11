@@ -4,11 +4,14 @@ use bevy::math::USizeVec2;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use bevy_ecs_tilemap::TilemapBundle;
+use bevy_rapier2d::prelude::Collider;
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
 use smallvec::SmallVec;
 
 const TILE_SIZE: u32 = 16;
+const TILE_SIZE_F32: f32 = TILE_SIZE as f32;
+const HALF_TILE_SIZE_F32: f32 = (TILE_SIZE / 2) as f32;
 
 pub(super) struct GeneratorPlugin;
 
@@ -70,9 +73,10 @@ fn create_maze(
                     MazeCellState::Wall => WALL_INDEX,
                 };
 
+                let tp: Vec2 = tile_pos.into();
+
                 let tile_entity = commands
-                    .entity(tilemap_entity)
-                    .with_child((
+                    .spawn((
                         TileBundle {
                             position: tile_pos,
                             tilemap_id: TilemapId(tilemap_entity),
@@ -83,13 +87,22 @@ fn create_maze(
                     ))
                     .id();
 
+                if cell.is_wall() {
+                    println!("Wall here {}", tp);
+                    commands.entity(tile_entity).insert((
+                        Transform::from_translation(tp.extend(0.0) * TILE_SIZE_F32),
+                        Collider::cuboid(HALF_TILE_SIZE_F32, HALF_TILE_SIZE_F32),
+                    ));
+                }
+
                 tile_storage.set(&tile_pos, tile_entity);
+                commands.entity(tilemap_entity).add_child(tile_entity);
 
                 i += 1;
             }
         }
 
-        let tile_size = TilemapTileSize::new(TILE_SIZE as f32, TILE_SIZE as f32);
+        let tile_size = TilemapTileSize::new(TILE_SIZE_F32, TILE_SIZE_F32);
         let grid_size = tile_size.into();
         let map_type = TilemapType::Square;
 
