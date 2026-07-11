@@ -15,7 +15,7 @@ pub(super) struct GeneratorPlugin;
 impl Plugin for GeneratorPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<GenerateMazeMessage>()
-            .add_systems(Update, generate_maze);
+            .add_systems(Update, create_maze);
     }
 }
 
@@ -42,7 +42,7 @@ impl MazeCellState {
     }
 }
 
-fn generate_maze(
+fn create_maze(
     mut commands: Commands,
     maze_tile_image_assets: Res<MazeTileImageAssets>,
     mut generate_maze_message: MessageReader<GenerateMazeMessage>,

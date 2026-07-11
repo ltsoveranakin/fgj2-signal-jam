@@ -20,7 +20,7 @@ impl Plugin for MazePlugin {
 struct MazeTileImageAssets([Handle<Image>; 2]);
 
 fn startup_generate(mut generate_maze_message: MessageWriter<GenerateMazeMessage>) {
-    generate_maze_message.write(GenerateMazeMessage(19));
+    generate_maze_message.write(GenerateMazeMessage(51));
 }
 
 fn load_assets(
