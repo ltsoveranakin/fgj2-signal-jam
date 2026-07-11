@@ -1,21 +1,26 @@
+use crate::game::maze::{MazeTileImageAssets, PATH_INDEX, WALL_INDEX};
+use bevy::ecs::relationship::OrderedRelationshipSourceCollection;
 use bevy::math::USizeVec2;
 use bevy::prelude::*;
+use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tilemap::TilemapBundle;
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
 use smallvec::SmallVec;
-use std::collections::LinkedList;
+
+const TILE_SIZE: u32 = 16;
 
 pub(super) struct GeneratorPlugin;
 
 impl Plugin for GeneratorPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<GenerateMazeMessage>()
-            .add_systems(Startup, generate_maze);
+            .add_systems(Update, generate_maze);
     }
 }
 
 #[derive(Message)]
-pub(crate) struct GenerateMazeMessage(usize);
+pub(super) struct GenerateMazeMessage(pub(super) usize);
 
 #[derive(Copy, Clone)]
 enum MazeCellState {
@@ -37,59 +42,70 @@ impl MazeCellState {
     }
 }
 
-// https://www.youtube.com/watch?v=TaQly10bDME
-fn generate_maze(mut generate_maze_message: MessageReader<GenerateMazeMessage>) {
+fn generate_maze(
+    mut commands: Commands,
+    maze_tile_image_assets: Res<MazeTileImageAssets>,
+    mut generate_maze_message: MessageReader<GenerateMazeMessage>,
+) {
     for maze_msg in generate_maze_message.read() {
-        let mut rng = SmallRng::seed_from_u64(10);
-        let maze_size = maze_msg.0;
-        let half_maze_size = maze_size / 2;
-        let mut maze_matrix = vec![MazeCellState::Wall; maze_size * maze_size];
-        let mut visited = vec![false; maze_size * maze_size];
+        let maze_matrix = generate_maze_from_dimensions(maze_msg.0);
 
+        let maze_size = maze_msg.0 as u32;
+
+        let map_size = TilemapSize::new(maze_size, maze_size);
+
+        let mut tile_storage = TileStorage::empty(map_size);
+
+        let tilemap_entity = commands.spawn_empty().id();
+
+        let mut i = 0;
         for y in 0..maze_size {
-            if y % 2 == 1 {
-                continue;
-            }
-
             for x in 0..maze_size {
-                if x % 2 == 1 {
-                    continue;
-                }
+                let tile_pos = TilePos::new(x, y);
+                let cell = maze_matrix[i];
 
-                maze_matrix[get_cell_index(x, y, maze_size)] = MazeCellState::Path;
+                let image_index = match cell {
+                    MazeCellState::Path => PATH_INDEX,
+
+                    MazeCellState::Wall => WALL_INDEX,
+                };
+
+                let tile_entity = commands
+                    .entity(tilemap_entity)
+                    .with_child((
+                        TileBundle {
+                            position: tile_pos,
+                            tilemap_id: TilemapId(tilemap_entity),
+                            texture_index: TileTextureIndex(image_index as u32),
+                            ..default()
+                        },
+                        Name::new("Tile"),
+                    ))
+                    .id();
+
+                tile_storage.set(&tile_pos, tile_entity);
+
+                i += 1;
             }
         }
 
-        print_maze(&maze_matrix, maze_size);
+        let tile_size = TilemapTileSize::new(TILE_SIZE as f32, TILE_SIZE as f32);
+        let grid_size = tile_size.into();
+        let map_type = TilemapType::Square;
 
-        let mut stack = LinkedList::new();
-
-        let start = USizeVec2::new(
-            rng.random_range(0..half_maze_size) * 2,
-            rng.random_range(0..half_maze_size) * 2,
-        );
-
-        stack.push_back(start);
-
-        while let Some(cell) = stack.pop_front() {
-            let room_offsets = get_rooms_over_offsets(cell, maze_size, &visited);
-
-            if room_offsets.is_empty() {
-            } else {
-                let (next_room, next_wall) = room_offsets[rng.random_range(0..room_offsets.len())];
-
-                maze_matrix[us_get_cell_index(next_wall, maze_size)] = MazeCellState::Path;
-
-                visited[us_get_cell_index(next_room, maze_size)] = true;
-                stack.push_back(next_room);
-            }
-        }
-
-        // while let Some(cell) = queue.pop_front() {}
-
-        print_maze(&maze_matrix, maze_size);
-
-        // }
+        commands.entity(tilemap_entity).insert((
+            TilemapBundle {
+                grid_size,
+                map_type,
+                size: map_size,
+                storage: tile_storage,
+                texture: TilemapTexture::Vector(maze_tile_image_assets.to_vec()),
+                tile_size,
+                transform: Transform::default(),
+                ..default()
+            },
+            Name::new("TileMap"),
+        ));
     }
 }
 
@@ -101,80 +117,83 @@ fn get_cell_index(x: usize, y: usize, size: usize) -> usize {
     x + (y * size)
 }
 
-// const fn get_doubled(mut offsets: [IVec2; 4]) -> [IVec2; 4] {
-//     let mut i = 0;
-//
-//     while i <  offsets.len() {
-//         offsets[i].x *= 2;
-//         offsets[i].y *= 2;
-//
-//         i+= 1;
-//     }
-//
-//     offsets
-// }
+fn generate_maze_from_dimensions(maze_size: usize) -> Vec<MazeCellState> {
+    let mut rng = SmallRng::seed_from_u64(10);
+
+    let mut maze = vec![MazeCellState::Wall; maze_size * maze_size];
+    let mut visited = vec![false; maze_size * maze_size];
+
+    let room_count = (maze_size - 1) / 2;
+
+    let start = USizeVec2::new(
+        (rng.random_range(0..room_count) * 2) + 1,
+        (rng.random_range(0..room_count) * 2) + 1,
+    );
+
+    let mut stack = Vec::new();
+
+    let start_index = us_get_cell_index(start, maze_size);
+    visited[start_index] = true;
+    maze[start_index] = MazeCellState::Path;
+
+    stack.push(start);
+
+    while let Some(&current) = stack.last() {
+        let neighbors = get_rooms_over_offsets(current, maze_size, &visited);
+
+        if neighbors.is_empty() {
+            stack.pop();
+            continue;
+        }
+
+        let (next_room, wall_between) = neighbors[rng.random_range(0..neighbors.len())];
+
+        let room_index = us_get_cell_index(next_room, maze_size);
+        let wall_index = us_get_cell_index(wall_between, maze_size);
+
+        visited[room_index] = true;
+
+        maze[wall_index] = MazeCellState::Path;
+        maze[room_index] = MazeCellState::Path;
+
+        stack.push(next_room);
+    }
+
+    maze
+}
 
 fn get_rooms_over_offsets(
     pos: USizeVec2,
-    size_u: usize,
+    maze_size: usize,
     visited: &[bool],
 ) -> SmallVec<[(USizeVec2, USizeVec2); 4]> {
-    const OFFSETS: [IVec2; 4] = [
-        IVec2::new(0, 1),
-        IVec2::new(1, 0),
-        IVec2::new(0, -1),
-        IVec2::new(-1, 0),
-    ];
+    const OFFSETS: [IVec2; 4] = [IVec2::Y, IVec2::X, IVec2::NEG_Y, IVec2::NEG_X];
 
-    let size = size_u as i32;
     let pos = pos.as_ivec2();
+    let maze_size_i32 = maze_size as i32;
 
-    let mut valid_offsets = SmallVec::<_>::new();
+    let mut neighbors = SmallVec::new();
 
-    for offset in OFFSETS {
-        let new_pos = pos + (offset * 2);
+    for dir in OFFSETS {
+        let room = pos + dir * 2;
 
-        if new_pos.x >= size || new_pos.y >= size || new_pos.x < 0 || new_pos.y < 0 {
+        if room.x <= 0 || room.y <= 0 || room.x >= maze_size_i32 || room.y >= maze_size_i32 {
             continue;
         }
 
-        let new_pos = new_pos.as_usizevec2();
+        let room = room.as_usizevec2();
 
-        if visited[us_get_cell_index(new_pos, size_u)] {
+        if visited[us_get_cell_index(room, maze_size)] {
             continue;
         }
 
-        let wall_between = (pos + offset).as_usizevec2();
+        let wall = (pos + dir).as_usizevec2();
 
-        valid_offsets.push((new_pos, wall_between));
+        neighbors.push((room, wall));
     }
 
-    valid_offsets
+    neighbors
 }
-
-// fn get_valid_adj_cells(pos: USizeVec2, size: i32, rng: &mut SmallRng) -> SmallVec<[USizeVec2; 4]> {
-//     let mut cells = SmallVec::new();
-//
-//     for x in -1..=1 {
-//         for y in -1..=1 {
-//             if (x == 0 && y == 0) || (x != 0 && y != 0) {
-//                 continue;
-//             }
-//
-//             let new_pos = pos.as_ivec2() + IVec2::new(x, y);
-//
-//             if new_pos.x >= size || new_pos.y >= size || new_pos.x < 0 || new_pos.y < 0 {
-//                 continue;
-//             }
-//
-//             cells.push(new_pos.as_uvec2());
-//         }
-//     }
-//
-//     cells.shuffle(rng);
-//
-//     cells
-// }
 
 fn print_maze(maze_matrix: &[MazeCellState], maze_size: usize) {
     let mut x = 0;
