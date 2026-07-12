@@ -1,3 +1,4 @@
+use crate::game::player::Player;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 
@@ -6,7 +7,7 @@ pub(super) struct GameCameraPlugin;
 impl Plugin for GameCameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_camera)
-            .add_systems(Update, zoom_camera);
+            .add_systems(Update, (zoom_camera, move_camera_to_player));
     }
 }
 
@@ -30,5 +31,19 @@ fn zoom_camera(
 
             _ => unreachable!(),
         }
+    }
+}
+
+fn move_camera_to_player(
+    mut camera_query: Query<&mut Transform, With<Camera>>,
+    player_query: Query<&Transform, (With<Player>, Without<Camera>)>,
+) {
+    let mut camera_transform = camera_query.single_mut().unwrap();
+
+    for player_transform in player_query.iter() {
+        let mut player_translation = player_transform.translation;
+        player_translation.z = camera_transform.translation.z;
+
+        camera_transform.translation = player_translation;
     }
 }

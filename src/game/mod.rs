@@ -1,6 +1,7 @@
 mod camera;
 mod maze;
 mod player;
+mod z_coord;
 
 use crate::game::camera::GameCameraPlugin;
 use crate::game::maze::MazePlugin;

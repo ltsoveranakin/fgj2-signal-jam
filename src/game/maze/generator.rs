@@ -1,17 +1,17 @@
 use crate::game::maze::{MazeMatrix, MazeTileImageAssets, PATH_INDEX, WALL_INDEX};
+use crate::game::z_coord::MAZE_Z_COORD;
 use bevy::ecs::relationship::OrderedRelationshipSourceCollection;
 use bevy::math::USizeVec2;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::TilemapBundle;
 use bevy_ecs_tilemap::prelude::*;
 use bevy_rapier2d::prelude::Collider;
-use rand::rngs::SmallRng;
-use rand::{RngExt, SeedableRng};
+use rand::RngExt;
 use smallvec::SmallVec;
 
-const TILE_SIZE: u32 = 16;
-const TILE_SIZE_F32: f32 = TILE_SIZE as f32;
-const HALF_TILE_SIZE_F32: f32 = (TILE_SIZE / 2) as f32;
+pub(crate) const TILE_SIZE_U32: u32 = 16;
+const TILE_SIZE_F32: f32 = TILE_SIZE_U32 as f32;
+const HALF_TILE_SIZE_F32: f32 = (TILE_SIZE_U32 / 2) as f32;
 
 pub(super) struct GeneratorPlugin;
 
@@ -19,17 +19,20 @@ impl Plugin for GeneratorPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<GenerateMazeMessage>()
             .add_message::<MazeReadyMessage>()
-            .add_systems(Update, create_maze);
+            .add_systems(PostUpdate, create_maze); // Allow for maze to be fully spawned in when the event is consumed
     }
 }
 
 #[derive(Message)]
-pub(super) struct GenerateMazeMessage(pub(super) usize);
+pub(super) struct GenerateMazeMessage {
+    pub(super) size: usize,
+    pub(super) seed: u64,
+}
 
 #[derive(Message)]
 pub(crate) struct MazeReadyMessage {
-    tilemap_entity: Entity,
-    maze_size: usize,
+    pub(crate) tilemap_entity: Entity,
+    pub(crate) maze_size: usize,
 }
 
 #[derive(Copy, Clone)]
@@ -59,9 +62,9 @@ fn create_maze(
     mut maze_ready_message: MessageWriter<MazeReadyMessage>,
 ) {
     for maze_msg in generate_maze_message.read() {
-        let maze_matrix = generate_maze_from_dimensions(maze_msg.0);
+        let maze_matrix = generate_maze_from_dimensions(maze_msg.size, maze_msg.seed);
 
-        let maze_size = maze_msg.0 as u32;
+        let maze_size = maze_msg.size as u32;
 
         let map_size = TilemapSize::new(maze_size, maze_size);
 
@@ -118,7 +121,7 @@ fn create_maze(
                 storage: tile_storage,
                 texture: TilemapTexture::Vector(maze_tile_image_assets.to_vec()),
                 tile_size,
-                transform: Transform::default(),
+                transform: Transform::from_xyz(0.0, 0.0, MAZE_Z_COORD),
                 ..default()
             },
             maze_matrix,
@@ -132,17 +135,15 @@ fn create_maze(
     }
 }
 
-fn generate_maze_from_dimensions(maze_size: usize) -> MazeMatrix {
-    let mut rng = SmallRng::seed_from_u64(10);
-
-    let mut maze_matrix = MazeMatrix::new(maze_size);
+fn generate_maze_from_dimensions(maze_size: usize, seed: u64) -> MazeMatrix {
+    let mut maze_matrix = MazeMatrix::new(maze_size, seed);
     let mut visited = vec![false; maze_size * maze_size];
 
     let room_count = (maze_size - 1) / 2;
 
     let start = USizeVec2::new(
-        (rng.random_range(0..room_count) * 2) + 1,
-        (rng.random_range(0..room_count) * 2) + 1,
+        (maze_matrix.rng.random_range(0..room_count) * 2) + 1,
+        (maze_matrix.rng.random_range(0..room_count) * 2) + 1,
     );
 
     let mut stack = Vec::new();
@@ -161,7 +162,7 @@ fn generate_maze_from_dimensions(maze_size: usize) -> MazeMatrix {
             continue;
         }
 
-        let (next_room, wall_between) = neighbors[rng.random_range(0..neighbors.len())];
+        let (next_room, wall_between) = neighbors[maze_matrix.rng.random_range(0..neighbors.len())];
 
         let room_index = maze_matrix.us_get_cell_index(next_room);
         let wall_index = maze_matrix.us_get_cell_index(wall_between);

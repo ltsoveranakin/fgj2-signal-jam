@@ -3,7 +3,8 @@ pub(super) mod generator;
 use crate::game::maze::generator::{GenerateMazeMessage, GeneratorPlugin, MazeCellState};
 use bevy::math::USizeVec2;
 use bevy::prelude::*;
-use std::slice::SliceIndex;
+use rand::SeedableRng;
+use rand::prelude::SmallRng;
 
 const PATH_INDEX: usize = 0;
 const WALL_INDEX: usize = 1;
@@ -24,14 +25,16 @@ struct MazeTileImageAssets([Handle<Image>; 2]);
 #[derive(Component)]
 pub(super) struct MazeMatrix {
     matrix: Vec<MazeCellState>,
-    maze_size: usize,
+    pub(super) maze_size: usize,
+    pub(crate) rng: SmallRng,
 }
 
 impl MazeMatrix {
-    fn new(maze_size: usize) -> Self {
+    fn new(maze_size: usize, seed: u64) -> Self {
         Self {
             matrix: vec![MazeCellState::Wall; maze_size * maze_size],
             maze_size,
+            rng: SmallRng::seed_from_u64(seed),
         }
     }
 
@@ -43,7 +46,7 @@ impl MazeMatrix {
         Self::compute_index_with_size(x, y, self.maze_size)
     }
 
-    fn us_get_cell(&self, usize_vec2: USizeVec2) -> MazeCellState {
+    pub(super) fn us_get_cell(&self, usize_vec2: USizeVec2) -> MazeCellState {
         self.get_cell(usize_vec2.x, usize_vec2.y)
     }
 
@@ -67,7 +70,7 @@ impl MazeMatrix {
 }
 
 fn startup_generate(mut generate_maze_message: MessageWriter<GenerateMazeMessage>) {
-    generate_maze_message.write(GenerateMazeMessage(91));
+    generate_maze_message.write(GenerateMazeMessage { size: 91, seed: 10 });
 }
 
 fn load_assets(
