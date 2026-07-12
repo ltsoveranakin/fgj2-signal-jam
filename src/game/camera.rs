@@ -2,6 +2,8 @@ use crate::game::player::Player;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 
+const CLEAR_COLOR: Color = Color::srgb_u8(9, 2, 20);
+
 pub(super) struct GameCameraPlugin;
 
 impl Plugin for GameCameraPlugin {
@@ -12,7 +14,13 @@ impl Plugin for GameCameraPlugin {
 }
 
 fn spawn_camera(mut commands: Commands) {
-    commands.spawn(Camera2d::default());
+    commands.spawn((
+        Camera2d::default(),
+        Camera {
+            clear_color: ClearColorConfig::Custom(CLEAR_COLOR),
+            ..default()
+        },
+    ));
 }
 
 fn zoom_camera(

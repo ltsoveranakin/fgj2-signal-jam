@@ -21,10 +21,10 @@ impl Plugin for DebugPlugin {
 }
 
 fn toggle_physics_renderer(
-    mut key_input: MessageReader<KeyboardInput>,
+    mut keyboard_input: MessageReader<KeyboardInput>,
     mut debug_render_context: ResMut<DebugRenderContext>,
 ) {
-    for key in key_input.read() {
+    for key in keyboard_input.read() {
         if key.key_code != KeyCode::Backquote || key.state != ButtonState::Pressed || key.repeat {
             continue;
         }

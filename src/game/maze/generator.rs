@@ -1,11 +1,10 @@
 use crate::game::maze::{MazeMatrix, MazeTileImageAssets, PATH_INDEX, WALL_INDEX};
 use crate::game::z_coord::MAZE_Z_COORD;
-use bevy::ecs::relationship::OrderedRelationshipSourceCollection;
 use bevy::math::USizeVec2;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::TilemapBundle;
 use bevy_ecs_tilemap::prelude::*;
-use bevy_rapier2d::prelude::Collider;
+use bevy_rapier2d::prelude::*;
 use rand::RngExt;
 use smallvec::SmallVec;
 
@@ -102,6 +101,7 @@ fn create_maze(
                     commands.entity(tile_entity).insert((
                         Transform::from_translation(tp.extend(0.0) * TILE_SIZE_F32),
                         Collider::cuboid(HALF_TILE_SIZE_F32, HALF_TILE_SIZE_F32),
+                        RigidBody::Fixed,
                     ));
                 }
 
