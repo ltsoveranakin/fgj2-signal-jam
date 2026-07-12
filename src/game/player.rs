@@ -4,7 +4,7 @@ use crate::game::z_coord::PLAYER_Z_COORD;
 use bevy::math::USizeVec2;
 use bevy::prelude::*;
 use rand::RngExt;
-use rand::prelude::SmallRng;
+use rand::prelude::{SliceRandom, SmallRng};
 
 pub(super) struct PlayerPlugin;
 
@@ -50,14 +50,14 @@ fn find_points_in_maze(maze_matrix: &mut MazeMatrix) -> SpawnPoints {
     let midpoint_coord = maze_matrix.maze_size.div_ceil(2);
     let midpoint = USizeVec2::splat(midpoint_coord);
 
-    let spawn_radius = midpoint_coord as f32;
+    let spawn_radius = (midpoint_coord as f32) * 0.8;
 
-    let player_offset = create_offsets(spawn_radius, &mut maze_matrix.rng);
-    let target_offset = create_offsets(spawn_radius, &mut maze_matrix.rng);
+    let player_loc = midpoint + create_offsets(spawn_radius, &mut maze_matrix.rng);
+    let target_loc = midpoint + create_offsets(spawn_radius, &mut maze_matrix.rng);
 
     SpawnPoints {
-        player: midpoint + player_offset,
-        target: midpoint + target_offset,
+        player: find_valid_spawn_spot(maze_matrix, player_loc),
+        target: find_valid_spawn_spot(maze_matrix, target_loc),
     }
 }
 
@@ -66,6 +66,46 @@ fn create_offsets(spawn_radius: f32, rng: &mut SmallRng) -> USizeVec2 {
     let y_offset = rng.random_range(0.0..spawn_radius);
 
     USizeVec2::new(x_offset as usize, y_offset as usize)
+}
+
+fn find_valid_spawn_spot(maze_matrix: &mut MazeMatrix, coord: USizeVec2) -> USizeVec2 {
+    const OFFSETS: [IVec2; 10] = calc_offsets();
+
+    let mut offsets = OFFSETS;
+
+    offsets.shuffle(&mut maze_matrix.rng);
+
+    for offset in offsets {
+        let cell_pos = (coord.as_ivec2() + offset).as_usizevec2();
+
+        if maze_matrix.us_get_cell(cell_pos).is_path() {
+            return cell_pos;
+        }
+    }
+
+    unreachable!()
+}
+
+const fn calc_offsets() -> [IVec2; 10] {
+    let mut i = 0;
+
+    let mut offsets = [IVec2::ZERO; 10];
+
+    let mut x = -1;
+
+    while x <= 1 {
+        let mut y = -1;
+
+        while y <= 1 {
+            offsets[i] = IVec2::new(x, y);
+
+            y += 1;
+            i += 1;
+        }
+        x += 1;
+    }
+
+    offsets
 }
 
 struct SpawnPoints {

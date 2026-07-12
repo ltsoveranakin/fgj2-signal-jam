@@ -37,7 +37,7 @@ pub(crate) struct MazeReadyMessage {
 }
 
 #[derive(Copy, Clone)]
-pub(super) enum MazeCellState {
+pub(crate) enum MazeCellState {
     Wall,
     Path,
 }
@@ -51,7 +51,7 @@ impl MazeCellState {
         }
     }
 
-    fn is_path(&self) -> bool {
+    pub(crate) fn is_path(&self) -> bool {
         !self.is_wall()
     }
 }
