@@ -18,8 +18,9 @@ pub(super) struct GeneratorPlugin;
 impl Plugin for GeneratorPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<GenerateMazeMessage>()
-            .add_message::<MazeReadyMessage>()
-            .add_systems(PostUpdate, create_maze); // Allow for maze to be fully spawned in when the event is consumed
+            .add_message::<MazeReadyMessage>();
+
+        app.add_systems(PostUpdate, create_maze); // Allow for maze to be fully spawned in when the event is consumed
     }
 }
 

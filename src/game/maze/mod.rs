@@ -13,9 +13,11 @@ pub(super) struct MazePlugin;
 
 impl Plugin for MazePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(GeneratorPlugin)
-            .init_resource::<MazeTileImageAssets>()
-            .add_systems(Startup, (startup_generate, load_assets));
+        app.add_plugins(GeneratorPlugin);
+
+        app.init_resource::<MazeTileImageAssets>();
+
+        app.add_systems(Startup, (startup_generate, load_assets));
     }
 }
 
