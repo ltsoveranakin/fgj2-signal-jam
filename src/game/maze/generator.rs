@@ -62,6 +62,8 @@ fn create_maze(
     mut maze_ready_message: MessageWriter<MazeReadyMessage>,
 ) {
     for maze_msg in generate_maze_message.read() {
+        assert_eq!(maze_msg.size % 2, 1);
+
         let maze_matrix = generate_maze_from_dimensions(maze_msg.size, maze_msg.seed);
 
         let maze_size = maze_msg.size as u32;
@@ -102,6 +104,10 @@ fn create_maze(
                         Transform::from_translation(tp.extend(0.0) * TILE_SIZE_F32),
                         Collider::cuboid(HALF_TILE_SIZE_F32, HALF_TILE_SIZE_F32),
                         RigidBody::Fixed,
+                        Sleeping {
+                            sleeping: true,
+                            ..default()
+                        },
                     ));
                 }
 

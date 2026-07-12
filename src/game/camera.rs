@@ -9,7 +9,8 @@ pub(super) struct GameCameraPlugin;
 impl Plugin for GameCameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_camera)
-            .add_systems(Update, (zoom_camera, move_camera_to_player));
+            .add_systems(Update, zoom_camera)
+            .add_systems(PostUpdate, move_camera_to_player);
     }
 }
 
