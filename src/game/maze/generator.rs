@@ -1,9 +1,9 @@
-use crate::game::maze::{MazeTileImageAssets, PATH_INDEX, WALL_INDEX};
+use crate::game::maze::{MazeMatrix, MazeTileImageAssets, PATH_INDEX, WALL_INDEX};
 use bevy::ecs::relationship::OrderedRelationshipSourceCollection;
 use bevy::math::USizeVec2;
 use bevy::prelude::*;
-use bevy_ecs_tilemap::prelude::*;
 use bevy_ecs_tilemap::TilemapBundle;
+use bevy_ecs_tilemap::prelude::*;
 use bevy_rapier2d::prelude::Collider;
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
@@ -18,6 +18,7 @@ pub(super) struct GeneratorPlugin;
 impl Plugin for GeneratorPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<GenerateMazeMessage>()
+            .add_message::<MazeReadyMessage>()
             .add_systems(Update, create_maze);
     }
 }
@@ -25,8 +26,14 @@ impl Plugin for GeneratorPlugin {
 #[derive(Message)]
 pub(super) struct GenerateMazeMessage(pub(super) usize);
 
+#[derive(Message)]
+pub(crate) struct MazeReadyMessage {
+    tilemap_entity: Entity,
+    maze_size: usize,
+}
+
 #[derive(Copy, Clone)]
-enum MazeCellState {
+pub(super) enum MazeCellState {
     Wall,
     Path,
 }
@@ -49,6 +56,7 @@ fn create_maze(
     mut commands: Commands,
     maze_tile_image_assets: Res<MazeTileImageAssets>,
     mut generate_maze_message: MessageReader<GenerateMazeMessage>,
+    mut maze_ready_message: MessageWriter<MazeReadyMessage>,
 ) {
     for maze_msg in generate_maze_message.read() {
         let maze_matrix = generate_maze_from_dimensions(maze_msg.0);
@@ -61,11 +69,10 @@ fn create_maze(
 
         let tilemap_entity = commands.spawn_empty().id();
 
-        let mut i = 0;
         for y in 0..maze_size {
             for x in 0..maze_size {
                 let tile_pos = TilePos::new(x, y);
-                let cell = maze_matrix[i];
+                let cell = maze_matrix.get_cell(x as usize, y as usize);
 
                 let image_index = match cell {
                     MazeCellState::Path => PATH_INDEX,
@@ -88,7 +95,6 @@ fn create_maze(
                     .id();
 
                 if cell.is_wall() {
-                    println!("Wall here {}", tp);
                     commands.entity(tile_entity).insert((
                         Transform::from_translation(tp.extend(0.0) * TILE_SIZE_F32),
                         Collider::cuboid(HALF_TILE_SIZE_F32, HALF_TILE_SIZE_F32),
@@ -97,8 +103,6 @@ fn create_maze(
 
                 tile_storage.set(&tile_pos, tile_entity);
                 commands.entity(tilemap_entity).add_child(tile_entity);
-
-                i += 1;
             }
         }
 
@@ -117,23 +121,21 @@ fn create_maze(
                 transform: Transform::default(),
                 ..default()
             },
+            maze_matrix,
             Name::new("TileMap"),
         ));
+
+        maze_ready_message.write(MazeReadyMessage {
+            tilemap_entity,
+            maze_size: maze_size as usize,
+        });
     }
 }
 
-fn us_get_cell_index(usize_vec2: USizeVec2, size: usize) -> usize {
-    get_cell_index(usize_vec2.x, usize_vec2.y, size)
-}
-
-fn get_cell_index(x: usize, y: usize, size: usize) -> usize {
-    x + (y * size)
-}
-
-fn generate_maze_from_dimensions(maze_size: usize) -> Vec<MazeCellState> {
+fn generate_maze_from_dimensions(maze_size: usize) -> MazeMatrix {
     let mut rng = SmallRng::seed_from_u64(10);
 
-    let mut maze = vec![MazeCellState::Wall; maze_size * maze_size];
+    let mut maze_matrix = MazeMatrix::new(maze_size);
     let mut visited = vec![false; maze_size * maze_size];
 
     let room_count = (maze_size - 1) / 2;
@@ -145,9 +147,9 @@ fn generate_maze_from_dimensions(maze_size: usize) -> Vec<MazeCellState> {
 
     let mut stack = Vec::new();
 
-    let start_index = us_get_cell_index(start, maze_size);
+    let start_index = maze_matrix.us_get_cell_index(start);
     visited[start_index] = true;
-    maze[start_index] = MazeCellState::Path;
+    maze_matrix.set_cell_at_index(start_index, MazeCellState::Path);
 
     stack.push(start);
 
@@ -161,18 +163,18 @@ fn generate_maze_from_dimensions(maze_size: usize) -> Vec<MazeCellState> {
 
         let (next_room, wall_between) = neighbors[rng.random_range(0..neighbors.len())];
 
-        let room_index = us_get_cell_index(next_room, maze_size);
-        let wall_index = us_get_cell_index(wall_between, maze_size);
+        let room_index = maze_matrix.us_get_cell_index(next_room);
+        let wall_index = maze_matrix.us_get_cell_index(wall_between);
 
         visited[room_index] = true;
 
-        maze[wall_index] = MazeCellState::Path;
-        maze[room_index] = MazeCellState::Path;
+        maze_matrix.set_cell_at_index(room_index, MazeCellState::Path);
+        maze_matrix.set_cell_at_index(wall_index, MazeCellState::Path);
 
         stack.push(next_room);
     }
 
-    maze
+    maze_matrix
 }
 
 fn get_rooms_over_offsets(
@@ -196,7 +198,7 @@ fn get_rooms_over_offsets(
 
         let room = room.as_usizevec2();
 
-        if visited[us_get_cell_index(room, maze_size)] {
+        if visited[MazeMatrix::us_compute_index_with_size(room, maze_size)] {
             continue;
         }
 

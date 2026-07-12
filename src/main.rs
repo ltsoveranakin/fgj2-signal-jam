@@ -1,8 +1,8 @@
-pub mod game;
+mod game;
 
 use crate::game::GamePlugin;
-use bevy::prelude::App;
 use bevy::DefaultPlugins;
+use bevy::prelude::App;
 use bevy_ecs_tilemap::TilemapPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
