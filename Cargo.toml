@@ -10,10 +10,7 @@ smallvec = "1.15.2"
 rand = "0.10.2"
 bevy_ecs_tilemap = "0.19.0"
 bevy-inspector-egui = "0.37.0"
-bevy_rapier2d = "0.34.0"
-
-[patch.crates-io]
-bevy_rapier2d = { git = "https://github.com/Buncys/bevy_rapier.git", rev = "3ad36f3452343b35ec627e4cf60c1ae143a0ad4c" }
+bevy_rapier2d = "0.35.0"
 
 [profile.dev]
 opt-level = 0
