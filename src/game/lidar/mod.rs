@@ -1,31 +1,32 @@
+mod dots;
+
+use crate::game::lidar::dots::LidarDotsPlugin;
 use crate::game::player::Player;
 use crate::game::target::GameTarget;
-use bevy::ecs::system::entity_command::retain;
 use bevy::prelude::*;
-use bevy_rapier2d::na::point;
 use bevy_rapier2d::prelude::*;
-use smallvec::SmallVec;
-use std::f32::consts::PI;
 
-const LIDAR_DOTS_COUNT: usize = 20;
+const LIDAR_DOTS_COUNT: usize = 360;
 const CAST_EPSILON: f32 = 0.1;
 
 pub(super) struct LidarPlugin;
 
 impl Plugin for LidarPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins(LidarDotsPlugin);
+
         app.insert_resource(LidarCasts {
             casts_working: Vec::with_capacity(LIDAR_DOTS_COUNT),
             casts_done: Vec::with_capacity(LIDAR_DOTS_COUNT),
             cast_state: CastState::Inactive,
         });
 
-        app.add_systems(Update, (send_out_lidar_dots, update_lidar_casts));
-
         app.register_type::<LidarCasts>()
             .register_type::<LidarCast>()
             .register_type::<CastPosition>()
             .register_type::<CastState>();
+
+        app.add_systems(Update, (send_out_lidar_dots, update_lidar_casts));
     }
 }
 
@@ -47,6 +48,7 @@ pub(crate) struct LidarCast {
 pub(crate) struct CastPosition {
     pub(crate) position: Vec2,
     direction: Vec2,
+    entity_hit: Entity,
 }
 
 #[derive(Copy, Clone, PartialEq, Reflect)]
@@ -59,7 +61,6 @@ pub(crate) enum CastState {
 }
 
 fn send_out_lidar_dots(
-    // mut lidar_dot_query: Query<(&mut Transform, &mut Velocity, &mut Visibility), With<LidarDot>>,
     player_query: Query<&Transform, With<Player>>,
     mut lidar_casts: ResMut<LidarCasts>,
     key_input: Res<ButtonInput<KeyCode>>,
@@ -82,6 +83,7 @@ fn send_out_lidar_dots(
             cast_positions: vec![CastPosition {
                 position: player_transform.translation.truncate(),
                 direction,
+                entity_hit: Entity::PLACEHOLDER,
             }],
             current_cast_distance: 0.0,
         });
@@ -143,7 +145,16 @@ fn update_lidar_casts(
         };
 
         let solid = true;
-        let query = QueryFilter::new().exclude_collider(player_entity);
+        let predicate = |entity| {
+            if entity == cast_position.entity_hit {
+                false
+            } else {
+                true
+            }
+        };
+        let query = QueryFilter::new()
+            .exclude_collider(player_entity)
+            .predicate(&predicate);
 
         // Cast positions will always have a length of at least 1
 
@@ -169,15 +180,15 @@ fn update_lidar_casts(
             };
 
             casts_to_remove[i] = true;
-            continue;
         }
 
         let reflected_dir = cast_position.direction
             - (2.0 * (cast_position.direction * cast_result.normal)) * cast_result.normal;
 
         cast_positions.push(CastPosition {
-            position: cast_result.point + (reflected_dir * CAST_EPSILON),
+            position: cast_result.point,
             direction: reflected_dir,
+            entity_hit,
         });
     }
 

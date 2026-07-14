@@ -24,7 +24,7 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         Transform::from_xyz(0.0, 0.0, PLAYER_Z_COORD),
         Visibility::Hidden,
         Sprite::from_image(asset_server.load("image/character/player.png")),
-        Collider::ball(6.0),
+        Collider::ball(4.0),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
         Velocity::zero(),

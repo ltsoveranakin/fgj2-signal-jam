@@ -62,11 +62,15 @@ fn create_maze(
     mut maze_ready_message: MessageWriter<MazeReadyMessage>,
 ) {
     for maze_msg in generate_maze_message.read() {
-        assert_eq!(maze_msg.size % 2, 1);
+        let maze_size = if maze_msg.size % 2 == 0 {
+            maze_msg.size + 1
+        } else {
+            maze_msg.size
+        };
 
-        let maze_matrix = generate_maze_from_dimensions(maze_msg.size, maze_msg.seed);
+        let maze_matrix = generate_maze_from_dimensions(maze_size, maze_msg.seed);
 
-        let maze_size = maze_msg.size as u32;
+        let maze_size = maze_size as u32;
 
         let map_size = TilemapSize::new(maze_size, maze_size);
 
