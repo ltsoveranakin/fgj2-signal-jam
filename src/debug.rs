@@ -1,3 +1,4 @@
+use crate::ui::start_menu::MazeButton;
 use bevy::anti_alias::contrast_adaptive_sharpening::cas;
 use bevy::color::palettes::css;
 use bevy::input::ButtonState;
@@ -20,7 +21,13 @@ impl Plugin for DebugPlugin {
 
         app.init_resource::<DebugMode>();
 
-        app.add_systems(Update, (toggle_debug_mode, set_physics_renderer));
+        app.add_systems(
+            Update,
+            (
+                toggle_debug_mode,
+                (set_physics_renderer, set_shown_maze_button).run_if(resource_changed::<DebugMode>),
+            ),
+        );
     }
 }
 
@@ -49,34 +56,16 @@ fn set_physics_renderer(
 ) {
     debug_render_context.enabled = debug_mode.enabled;
 }
-//
-// fn draw_cast_gizmos(mut gizmos: Gizmos, lidar_casts: Res<LidarCasts>, debug_mode: Res<DebugMode>) {
-//     if !debug_mode.enabled {
-//         return;
-//     }
-//
-//     let working_color = if matches!(lidar_casts.cast_state, CastState::Casting) {
-//         Srgba::RED
-//     } else {
-//         Srgba::rgb_u8(245, 152, 66)
-//     };
-//
-//     draw_cast_line(&mut gizmos, &lidar_casts.casts_working, working_color);
-//
-//     draw_cast_line(&mut gizmos, &lidar_casts.casts_done, Srgba::GREEN);
-// }
-//
-// fn draw_cast_line(gizmos: &mut Gizmos, casts: &[Option<LidarCast>], color: Srgba) {
-//     for cast in casts.iter().flatten() {
-//         gizmos.linestrip_2d(
-//             cast.cast_positions
-//                 .iter()
-//                 .map(|cast_position| cast_position.position),
-//             color,
-//         );
-//
-//         if let Some(last_position) = cast.cast_positions.last() {
-//             gizmos.circle_2d(last_position.position, 2.0, css::ORANGE_RED);
-//         }
-//     }
-// }
+
+fn set_shown_maze_button(
+    mut maze_button_query: Query<&mut Node, With<MazeButton>>,
+    debug_mode: Res<DebugMode>,
+) {
+    let mut maze_button_node = maze_button_query.single_mut().unwrap();
+
+    maze_button_node.display = if debug_mode.enabled {
+        Display::DEFAULT
+    } else {
+        Display::None
+    };
+}

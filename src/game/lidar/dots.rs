@@ -41,8 +41,14 @@ enum LidarState {
 }
 
 fn spawn_initial_dots(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let mut lidar_dots_parent = commands.spawn((
+        Transform::default(),
+        Visibility::default(),
+        Name::new("Lidar Dots"),
+    ));
+
     for _ in 0..LIDAR_DOTS_COUNT {
-        commands.spawn((
+        lidar_dots_parent.with_child((
             LidarDot {
                 direction: Vec2::ZERO,
                 last_entity_hit: Entity::PLACEHOLDER,

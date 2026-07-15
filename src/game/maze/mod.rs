@@ -3,6 +3,7 @@ pub(super) mod generator;
 use crate::game::maze::generator::{
     GenerateMazeMessage, GeneratorPlugin, MazeCellState, MazeReadyMessage,
 };
+use crate::ui::start_menu::StartGameMessage;
 use bevy::math::USizeVec2;
 use bevy::prelude::*;
 use rand::prelude::{SliceRandom, SmallRng};
@@ -21,8 +22,8 @@ impl Plugin for MazePlugin {
 
         app.add_message::<PlaceMazeObjectsMessage>();
 
-        app.add_systems(Startup, (startup_generate, load_assets))
-            .add_systems(Update, prepare_spawn_locations);
+        app.add_systems(Startup, load_assets)
+            .add_systems(Update, (prepare_spawn_locations, send_generate_message));
     }
 }
 
@@ -36,8 +37,15 @@ pub(super) struct MazeMatrix {
     pub(crate) rng: SmallRng,
 }
 
-fn startup_generate(mut generate_maze_message: MessageWriter<GenerateMazeMessage>) {
-    generate_maze_message.write(GenerateMazeMessage { size: 20, seed: 23 });
+fn send_generate_message(
+    mut start_game_message: MessageReader<StartGameMessage>,
+    mut generate_maze_message: MessageWriter<GenerateMazeMessage>,
+) {
+    for start_game in start_game_message.read() {
+        if *start_game == StartGameMessage::Maze {
+            generate_maze_message.write(GenerateMazeMessage { size: 20, seed: 23 });
+        }
+    }
 }
 
 #[derive(Message, Deref)]
