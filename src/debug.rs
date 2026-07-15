@@ -71,8 +71,8 @@ fn draw_cast_gizmos(mut gizmos: Gizmos, lidar_casts: Res<LidarCasts>, debug_mode
     draw_cast_line(&mut gizmos, &lidar_casts.casts_done, Srgba::GREEN);
 }
 
-fn draw_cast_line(gizmos: &mut Gizmos, casts: &[LidarCast], color: Srgba) {
-    for cast in casts {
+fn draw_cast_line(gizmos: &mut Gizmos, casts: &[Option<LidarCast>], color: Srgba) {
+    for cast in casts.iter().flatten() {
         gizmos.linestrip_2d(
             cast.cast_positions
                 .iter()

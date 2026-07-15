@@ -5,6 +5,7 @@ use crate::game::player::Player;
 use crate::game::target::GameTarget;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
+use smallvec::SmallVec;
 
 const LIDAR_DOTS_COUNT: usize = 360;
 const CAST_EPSILON: f32 = 0.1;
@@ -16,10 +17,12 @@ impl Plugin for LidarPlugin {
         app.add_plugins(LidarDotsPlugin);
 
         app.insert_resource(LidarCasts {
-            casts_working: Vec::with_capacity(LIDAR_DOTS_COUNT),
-            casts_done: Vec::with_capacity(LIDAR_DOTS_COUNT),
+            casts_working: [const { None }; LIDAR_DOTS_COUNT],
+            casts_done: [const { None }; LIDAR_DOTS_COUNT],
             cast_state: CastState::Inactive,
         });
+
+        app.add_message::<StartLidarMessage>();
 
         app.register_type::<LidarCasts>()
             .register_type::<LidarCast>()
@@ -33,9 +36,27 @@ impl Plugin for LidarPlugin {
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
 pub(crate) struct LidarCasts {
-    pub(crate) casts_working: Vec<LidarCast>,
-    pub(crate) casts_done: Vec<LidarCast>,
+    pub(crate) casts_working: [Option<LidarCast>; LIDAR_DOTS_COUNT],
+    pub(crate) casts_done: [Option<LidarCast>; LIDAR_DOTS_COUNT],
     pub(crate) cast_state: CastState,
+}
+
+impl LidarCasts {
+    fn is_ready(&self) -> bool {
+        self.casts_working[0].is_some() || self.casts_done[0].is_some()
+    }
+
+    fn get_possible_value(&self, index: usize) -> &LidarCast {
+        self.casts_working[index].as_ref().unwrap_or_else(|| {
+            let cast_opt = self.casts_done[index].as_ref();
+
+            if cast_opt.is_none() {
+                println!("value at index doesn't exist in either: {}", index);
+            }
+
+            cast_opt.unwrap()
+        })
+    }
 }
 
 #[derive(Reflect)]
@@ -60,12 +81,16 @@ pub(crate) enum CastState {
     },
 }
 
+#[derive(Message, Default)]
+pub(super) struct StartLidarMessage;
+
 fn send_out_lidar_dots(
     player_query: Query<&Transform, With<Player>>,
     mut lidar_casts: ResMut<LidarCasts>,
     key_input: Res<ButtonInput<KeyCode>>,
+    mut start_lidar_message: MessageWriter<StartLidarMessage>,
 ) {
-    if !key_input.just_pressed(KeyCode::Space) || !lidar_casts.casts_working.is_empty() {
+    if !key_input.just_pressed(KeyCode::Space) || lidar_casts.cast_state != CastState::Inactive {
         return;
     }
 
@@ -79,7 +104,7 @@ fn send_out_lidar_dots(
 
         let direction = Vec2::from_angle(angle);
 
-        lidar_casts.casts_working.push(LidarCast {
+        lidar_casts.casts_working[i] = Some(LidarCast {
             cast_positions: vec![CastPosition {
                 position: player_transform.translation.truncate(),
                 direction,
@@ -90,6 +115,8 @@ fn send_out_lidar_dots(
 
         lidar_casts.cast_state = CastState::Casting;
     }
+
+    start_lidar_message.write_default();
 }
 
 // R=D−2(D⋅N)N
@@ -116,7 +143,7 @@ fn update_lidar_casts(
         cast_state,
     } = &mut *lidar_casts;
 
-    let mut casts_to_remove = [false; LIDAR_DOTS_COUNT];
+    let mut casts_to_remove: SmallVec<[usize; LIDAR_DOTS_COUNT]> = SmallVec::new();
 
     for (
         i,
@@ -124,7 +151,16 @@ fn update_lidar_casts(
             cast_positions,
             current_cast_distance,
         },
-    ) in casts_working.iter_mut().enumerate()
+    ) in casts_working
+        .iter_mut()
+        .enumerate()
+        .filter_map(|(i, cast_opt)| {
+            if let Some(cast) = cast_opt {
+                Some((i, cast))
+            } else {
+                None
+            }
+        })
     {
         let cast_position = cast_positions.last().unwrap();
 
@@ -135,7 +171,7 @@ fn update_lidar_casts(
             let max_toi = total_bounce_distance_to_target - *current_cast_distance;
 
             if max_toi <= 0.0 {
-                casts_to_remove[i] = true;
+                casts_to_remove.push(i);
                 continue;
             }
 
@@ -168,7 +204,7 @@ fn update_lidar_casts(
             ) {
             cast_result
         } else {
-            casts_to_remove[i] = true;
+            casts_to_remove.push(i);
             continue;
         };
 
@@ -179,7 +215,7 @@ fn update_lidar_casts(
                 total_bounce_distance_to_target: *current_cast_distance,
             };
 
-            casts_to_remove[i] = true;
+            casts_to_remove.push(i);
         }
 
         let reflected_dir = cast_position.direction
@@ -192,17 +228,10 @@ fn update_lidar_casts(
         });
     }
 
-    let mut i = 0;
-
-    let casts_done_to_add = casts_working.extract_if(0.., |_| {
-        let should_remove = casts_to_remove[i];
-
-        i += 1;
-
-        should_remove
-    });
-
-    for cast in casts_done_to_add {
-        casts_done.push(cast);
+    for i in casts_to_remove {
+        if casts_working[i].is_none() {
+            println!("this is why");
+        }
+        casts_done[i] = casts_working[i].take();
     }
 }

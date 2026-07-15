@@ -37,7 +37,7 @@ pub(super) struct MazeMatrix {
 }
 
 fn startup_generate(mut generate_maze_message: MessageWriter<GenerateMazeMessage>) {
-    generate_maze_message.write(GenerateMazeMessage { size: 200, seed: 0 });
+    generate_maze_message.write(GenerateMazeMessage { size: 10, seed: 23 });
 }
 
 #[derive(Message, Deref)]
