@@ -1,3 +1,4 @@
+mod assign_vec;
 mod debug;
 mod game;
 
