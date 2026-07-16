@@ -43,7 +43,7 @@ fn send_generate_message(
 ) {
     for start_game in start_game_message.read() {
         if *start_game == StartGameMessage::Maze {
-            generate_maze_message.write(GenerateMazeMessage { size: 20, seed: 23 });
+            generate_maze_message.write(GenerateMazeMessage { size: 33, seed: 1 });
         }
     }
 }

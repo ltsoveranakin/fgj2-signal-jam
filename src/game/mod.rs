@@ -1,4 +1,5 @@
 mod camera;
+mod level;
 pub(super) mod lidar;
 mod maze;
 mod player;
@@ -6,6 +7,7 @@ mod target;
 mod z_coord;
 
 use crate::game::camera::GameCameraPlugin;
+use crate::game::level::LevelPlugin;
 use crate::game::lidar::LidarPlugin;
 use crate::game::maze::MazePlugin;
 use crate::game::player::PlayerPlugin;
@@ -23,6 +25,7 @@ impl Plugin for GamePlugin {
             PlayerPlugin,
             LidarPlugin,
             TargetPlugin,
+            LevelPlugin,
         ));
     }
 }

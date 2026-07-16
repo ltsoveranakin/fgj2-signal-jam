@@ -9,8 +9,8 @@ use rand::RngExt;
 use smallvec::SmallVec;
 
 pub(crate) const TILE_SIZE_U32: u32 = 16;
-const TILE_SIZE_F32: f32 = TILE_SIZE_U32 as f32;
-const HALF_TILE_SIZE_F32: f32 = (TILE_SIZE_U32 / 2) as f32;
+pub(crate) const TILE_SIZE_F32: f32 = TILE_SIZE_U32 as f32;
+pub(crate) const HALF_TILE_SIZE_F32: f32 = (TILE_SIZE_U32 / 2) as f32;
 
 pub(super) struct GeneratorPlugin;
 

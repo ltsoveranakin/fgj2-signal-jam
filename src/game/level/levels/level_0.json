@@ -1,0 +1,26 @@
+{
+    "player_spawn": [
+        0,
+        0
+    ],
+    "target_spawn": [
+        3,
+        0
+    ],
+    "level_size": [
+        20,
+        20
+    ],
+    "walls": [
+        {
+            "dim": [
+                8,
+                2
+            ],
+            "coord": [
+                0,
+                0
+            ]
+        }
+    ]
+}
