@@ -21,7 +21,11 @@ pub(super) struct Player;
 fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Player,
-        Transform::from_xyz(0.0, 0.0, PLAYER_Z_COORD),
+        Transform {
+            translation: Vec3::new(0.0, 0.0, PLAYER_Z_COORD),
+            scale: Vec3::splat(0.3),
+            ..default()
+        },
         Visibility::Hidden,
         Sprite::from_image(asset_server.load("image/character/player.png")),
         Collider::ball(4.0),

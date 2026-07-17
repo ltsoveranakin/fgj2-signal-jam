@@ -37,8 +37,14 @@ struct LevelData {
 
 #[derive(Deserialize)]
 struct WallData {
-    dim: UVec2,
-    coord: UVec2,
+    x: u32,
+    y: u32,
+    #[serde(rename = "h")]
+    height: u32,
+    #[serde(rename = "w")]
+    width: u32,
+    #[serde(rename = "t")]
+    wall_type: u32,
 }
 
 #[derive(Message)]
