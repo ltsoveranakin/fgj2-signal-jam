@@ -1,9 +1,8 @@
 use crate::assign_vec::AssignVec;
-use bevy::color::palettes::css;
-
 use crate::game::player::Player;
 use crate::game::target::GameTarget;
 use crate::game::z_coord::LIDAR_DOT_Z_COORD;
+use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy_rapier2d::pipeline::QueryFilter;
 use bevy_rapier2d::prelude::*;
@@ -13,21 +12,15 @@ const LIDAR_DOTS_COUNT: usize = 200;
 const WALL_DOT_ALIVE_TIME: f32 = 10.0;
 const LIDAR_DOT_ALIVE_TIME: f32 = 10.0;
 const BOUNCE_ALIVE_TIME_PENALTY: f32 = 0.5;
+const LIDAR_COOLDOWN: f32 = 10.0;
 
 pub(super) struct LidarDotsPlugin;
 
 impl Plugin for LidarDotsPlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<LidarState>();
+        app.init_resource::<LidarNextUseTime>();
 
-        app.add_systems(
-            Update,
-            (
-                position_dots_ready.run_if(in_state(LidarState::Waiting)),
-                move_dots.run_if(in_state(LidarState::Scanning)),
-                fade_wall_dots,
-            ),
-        );
+        app.add_systems(Update, (position_dots_ready, move_dots, fade_wall_dots));
     }
 }
 
@@ -65,26 +58,18 @@ impl FadeDot {
     }
 }
 
-enum FadeColor {
-    WhiteToBlack,
-}
-
-#[derive(States, Default, Clone, PartialEq, Eq, Hash, Debug)]
-enum LidarState {
-    #[default]
-    Waiting,
-    Scanning,
-    FinishedScan,
-}
+#[derive(Resource, Default)]
+struct LidarNextUseTime(f32);
 
 fn position_dots_ready(
     mut commands: Commands,
     player_query: Query<&Transform, (With<Player>, Without<LidarDot>)>,
-    mut next_state: ResMut<NextState<LidarState>>,
     key_input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut lidar_next_use_time: ResMut<LidarNextUseTime>,
     asset_server: Res<AssetServer>,
 ) {
-    if !key_input.just_pressed(KeyCode::Space) {
+    if !key_input.just_pressed(KeyCode::Space) || time.elapsed_secs() <= lidar_next_use_time.0 {
         return;
     }
 
@@ -110,13 +95,12 @@ fn position_dots_ready(
                 scale: Vec3::splat(0.5),
                 ..default()
             },
-            FadeDot::new(LIDAR_DOT_ALIVE_TIME, css::GREEN, css::RED.with_alpha(0.0)),
+            FadeDot::new_alpha(LIDAR_DOT_ALIVE_TIME, css::RED),
         )
     });
 
     commands.spawn_batch(batch);
-
-    next_state.set(LidarState::Scanning);
+    lidar_next_use_time.0 = time.elapsed_secs() + LIDAR_COOLDOWN;
 }
 
 fn move_dots(
@@ -124,7 +108,6 @@ fn move_dots(
     mut dot_query: Query<(&mut LidarDot, &mut FadeDot, &mut Transform)>,
     player_query: Query<Entity, With<Player>>,
     target_query: Query<Entity, With<GameTarget>>,
-    mut next_state: ResMut<NextState<LidarState>>,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
     rapier_context: ReadRapierContext,
@@ -175,15 +158,17 @@ fn move_dots(
 
             dot_transform.translation.assign_from(hit_result.point);
 
+            let wall_fade_dot = if entity_hit == target_entity {
+                FadeDot::new(WALL_DOT_ALIVE_TIME, css::GREEN, css::WHITE.with_alpha(0.0))
+            } else {
+                FadeDot::new_alpha(WALL_DOT_ALIVE_TIME, Color::WHITE)
+            };
+
             commands.spawn((
-                FadeDot::new_alpha(WALL_DOT_ALIVE_TIME, Color::WHITE),
-                Sprite::from_image(asset_server.load("image/particle/lidar_dot_wall_fade.png")),
+                wall_fade_dot,
+                Sprite::from_image(asset_server.load("image/particle/lidar_dot.png")),
                 *dot_transform,
             ));
-
-            if entity_hit == target_entity {
-                next_state.set(LidarState::FinishedScan);
-            }
 
             distance_remaining_to_travel_this_tick -= hit_result.time_of_impact;
 

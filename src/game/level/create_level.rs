@@ -5,9 +5,6 @@ use bevy::prelude::*;
 use bevy_rapier2d::dynamics::RigidBody;
 use bevy_rapier2d::geometry::Collider;
 
-const PATH_TEXTURE_INDEX: usize = 0;
-const WALL_TEXTURE_INDEX: usize = 1;
-
 pub(super) struct CreateLevelPlugin;
 
 impl Plugin for CreateLevelPlugin {
@@ -47,8 +44,6 @@ fn create_level_on_set(
                     let cell_coord = UVec2::new(x, y);
 
                     let map_coord = coord + cell_coord;
-
-                    println!("map coord {}", map_coord);
 
                     commands.spawn(collision_box(map_coord.as_ivec2()));
                 }

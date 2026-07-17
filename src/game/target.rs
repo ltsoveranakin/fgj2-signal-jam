@@ -30,16 +30,14 @@ fn spawn_startup_target(mut commands: Commands, asset_server: Res<AssetServer>) 
 }
 
 fn place_target_in_maze(
-    mut target_query: Query<(&mut Transform, &mut Visibility), With<GameTarget>>,
+    mut target_query: Query<&mut Transform, With<GameTarget>>,
     mut place_maze_objects_message: MessageReader<PlaceMazeObjectsMessage>,
 ) {
     for place_maze_objects in place_maze_objects_message.read() {
-        let (mut target_transform, mut target_visibility) = target_query.single_mut().unwrap();
+        let mut target_transform = target_query.single_mut().unwrap();
 
         target_transform.translation = (place_maze_objects.target * (TILE_SIZE_U32 as usize))
             .as_vec2()
             .extend(target_transform.translation.z);
-
-        *target_visibility = Visibility::Visible;
     }
 }
