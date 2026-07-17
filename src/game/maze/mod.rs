@@ -48,10 +48,8 @@ fn send_generate_message(
     }
 }
 
-#[derive(Message, Deref)]
-pub(super) struct PlaceMazeObjectsMessage(SpawnPoints);
-
-pub(super) struct SpawnPoints {
+#[derive(Message)]
+pub(super) struct PlaceMazeObjectsMessage {
     pub(super) player: USizeVec2,
     pub(super) target: USizeVec2,
 }
@@ -66,11 +64,11 @@ fn prepare_spawn_locations(
 
         let spawn_points = find_points_in_maze(&mut maze_matrix);
 
-        place_maze_objects_message.write(PlaceMazeObjectsMessage(spawn_points));
+        place_maze_objects_message.write(spawn_points);
     }
 }
 
-fn find_points_in_maze(maze_matrix: &mut MazeMatrix) -> SpawnPoints {
+fn find_points_in_maze(maze_matrix: &mut MazeMatrix) -> PlaceMazeObjectsMessage {
     let midpoint_coord = maze_matrix.maze_size.div_ceil(2);
     let midpoint = USizeVec2::splat(midpoint_coord);
 
@@ -79,7 +77,7 @@ fn find_points_in_maze(maze_matrix: &mut MazeMatrix) -> SpawnPoints {
     let player_loc = midpoint + create_offsets(spawn_radius, &mut maze_matrix.rng);
     let target_loc = midpoint + create_offsets(spawn_radius, &mut maze_matrix.rng);
 
-    SpawnPoints {
+    PlaceMazeObjectsMessage {
         player: find_valid_spawn_spot(maze_matrix, player_loc),
         target: find_valid_spawn_spot(maze_matrix, target_loc),
     }

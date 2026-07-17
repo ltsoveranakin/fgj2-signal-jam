@@ -29,8 +29,8 @@ struct LevelsData {
 
 #[derive(Deserialize, Default)]
 struct LevelData {
-    player_spawn: IVec2,
-    target_spawn: IVec2,
+    player_spawn: UVec2,
+    target_spawn: UVec2,
     level_size: UVec2,
     walls: Vec<WallData>,
 }

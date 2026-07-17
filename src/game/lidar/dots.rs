@@ -1,4 +1,5 @@
 use crate::assign_vec::AssignVec;
+use bevy::color::palettes::css;
 
 use crate::game::player::Player;
 use crate::game::target::GameTarget;
@@ -9,7 +10,9 @@ use bevy_rapier2d::prelude::*;
 
 const LIDAR_DOT_SPEED: f32 = 150.0;
 const LIDAR_DOTS_COUNT: usize = 200;
-const WALL_DOT_FADE_SPEED: f32 = 0.1;
+const WALL_DOT_ALIVE_TIME: f32 = 10.0;
+const LIDAR_DOT_ALIVE_TIME: f32 = 10.0;
+const BOUNCE_ALIVE_TIME_PENALTY: f32 = 0.5;
 
 pub(super) struct LidarDotsPlugin;
 
@@ -17,7 +20,7 @@ impl Plugin for LidarDotsPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<LidarState>();
 
-        app.add_systems(Startup, spawn_initial_dots).add_systems(
+        app.add_systems(
             Update,
             (
                 position_dots_ready.run_if(in_state(LidarState::Waiting)),
@@ -37,6 +40,35 @@ struct LidarDot {
 #[derive(Component)]
 struct WallDot;
 
+#[derive(Component)]
+struct FadeDot {
+    total_fade_time: f32,
+    fade_time_elapsed: f32,
+    fade_from: Color,
+    fade_to: Color,
+}
+
+impl FadeDot {
+    fn new_alpha(total_fade_time: f32, fade_from: impl Into<Color>) -> Self {
+        let fade_from = fade_from.into();
+
+        Self::new(total_fade_time, fade_from, fade_from.with_alpha(0.0))
+    }
+
+    fn new(total_fade_time: f32, fade_from: impl Into<Color>, fade_to: impl Into<Color>) -> Self {
+        Self {
+            total_fade_time,
+            fade_time_elapsed: 0.0,
+            fade_from: fade_from.into(),
+            fade_to: fade_to.into(),
+        }
+    }
+}
+
+enum FadeColor {
+    WhiteToBlack,
+}
+
 #[derive(States, Default, Clone, PartialEq, Eq, Hash, Debug)]
 enum LidarState {
     #[default]
@@ -45,66 +77,51 @@ enum LidarState {
     FinishedScan,
 }
 
-fn spawn_initial_dots(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mut lidar_dots_parent = commands.spawn((
-        Transform::default(),
-        Visibility::default(),
-        Name::new("Lidar Dots"),
-    ));
-
-    for _ in 0..LIDAR_DOTS_COUNT {
-        lidar_dots_parent.with_child((
-            LidarDot {
-                direction: Vec2::ZERO,
-                last_entity_hit: Entity::PLACEHOLDER,
-            },
-            Sprite::from_image(asset_server.load("image/particle/lidar_dot.png")),
-            Transform {
-                translation: Vec3 {
-                    z: LIDAR_DOT_Z_COORD,
-                    ..default()
-                },
-                scale: Vec3::splat(0.5),
-                ..default()
-            },
-            Visibility::Hidden,
-        ));
-    }
-}
-
 fn position_dots_ready(
-    mut lidar_dot_query: Query<(&mut LidarDot, &mut Transform, &mut Visibility)>,
+    mut commands: Commands,
     player_query: Query<&Transform, (With<Player>, Without<LidarDot>)>,
     mut next_state: ResMut<NextState<LidarState>>,
     key_input: Res<ButtonInput<KeyCode>>,
+    asset_server: Res<AssetServer>,
 ) {
     if !key_input.just_pressed(KeyCode::Space) {
         return;
     }
 
-    let mut player_translation = player_query.single().unwrap().translation;
-    player_translation.z = LIDAR_DOT_Z_COORD;
+    let lidar_dot_sprite = asset_server.load("image/particle/lidar_dot.png");
+
+    let mut player_translation_lidar_dot_z = player_query.single().unwrap().translation;
+    player_translation_lidar_dot_z.z = LIDAR_DOT_Z_COORD;
 
     let step = (std::f32::consts::PI * 2.0) / (LIDAR_DOTS_COUNT as f32);
 
-    for (i, (mut lidar_dot, mut lidar_transform, mut lidar_visibility)) in
-        lidar_dot_query.iter_mut().enumerate()
-    {
+    let batch = (0..LIDAR_DOTS_COUNT).into_iter().map(move |i| {
         let angle = i as f32 * step;
         let direction = Vec2::from_angle(angle);
 
-        lidar_dot.direction = direction;
+        (
+            LidarDot {
+                direction,
+                last_entity_hit: Entity::PLACEHOLDER,
+            },
+            Sprite::from_image(lidar_dot_sprite.clone()),
+            Transform {
+                translation: player_translation_lidar_dot_z,
+                scale: Vec3::splat(0.5),
+                ..default()
+            },
+            FadeDot::new(LIDAR_DOT_ALIVE_TIME, css::GREEN, css::RED.with_alpha(0.0)),
+        )
+    });
 
-        lidar_transform.translation = player_translation;
-        *lidar_visibility = Visibility::Visible;
-    }
+    commands.spawn_batch(batch);
 
     next_state.set(LidarState::Scanning);
 }
 
 fn move_dots(
     mut commands: Commands,
-    mut dot_query: Query<(&mut LidarDot, &mut Transform)>,
+    mut dot_query: Query<(&mut LidarDot, &mut FadeDot, &mut Transform)>,
     player_query: Query<Entity, With<Player>>,
     target_query: Query<Entity, With<GameTarget>>,
     mut next_state: ResMut<NextState<LidarState>>,
@@ -118,7 +135,7 @@ fn move_dots(
 
     let distance_to_travel_this_tick = LIDAR_DOT_SPEED * time.delta_secs();
 
-    for (mut lidar_dot, mut dot_transform) in dot_query.iter_mut() {
+    for (mut lidar_dot, mut fade_dot, mut dot_transform) in dot_query.iter_mut() {
         let mut distance_remaining_to_travel_this_tick = distance_to_travel_this_tick;
 
         loop {
@@ -159,7 +176,7 @@ fn move_dots(
             dot_transform.translation.assign_from(hit_result.point);
 
             commands.spawn((
-                WallDot,
+                FadeDot::new_alpha(WALL_DOT_ALIVE_TIME, Color::WHITE),
                 Sprite::from_image(asset_server.load("image/particle/lidar_dot_wall_fade.png")),
                 *dot_transform,
             ));
@@ -175,23 +192,29 @@ fn move_dots(
 
             lidar_dot.last_entity_hit = entity_hit;
             lidar_dot.direction = reflected_dir;
+
+            fade_dot.fade_time_elapsed += BOUNCE_ALIVE_TIME_PENALTY;
         }
     }
 }
 
 fn fade_wall_dots(
     mut commands: Commands,
-    mut wall_dot_query: Query<(Entity, &mut Sprite), With<WallDot>>,
+    mut fade_dot_query: Query<(Entity, &mut FadeDot, &mut Sprite), With<FadeDot>>,
     time: Res<Time>,
 ) {
-    for (entity, mut wall_dot_sprite) in wall_dot_query.iter_mut() {
-        let color = &mut wall_dot_sprite.color;
-        let alpha = color.alpha();
-
-        color.set_alpha(alpha - (WALL_DOT_FADE_SPEED * time.delta_secs()));
-
-        if color.alpha() <= 0.0 {
+    for (entity, mut fade_dot, mut sprite) in fade_dot_query.iter_mut() {
+        if fade_dot.fade_time_elapsed >= fade_dot.total_fade_time {
             commands.entity(entity).despawn();
+            continue;
         }
+
+        let percent = fade_dot.fade_time_elapsed / fade_dot.total_fade_time;
+
+        let current_color = fade_dot.fade_from.mix(&fade_dot.fade_to, percent);
+
+        sprite.color = current_color;
+
+        fade_dot.fade_time_elapsed += time.delta_secs();
     }
 }
