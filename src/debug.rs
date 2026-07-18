@@ -18,51 +18,61 @@ impl Plugin for DebugPlugin {
             EguiPlugin::default(),
             WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::Backquote)),
         ));
-        app.init_resource::<DebugMode>();
+
+        app.insert_resource(DebugModeEnabled::disabled());
 
         app.add_systems(
             Update,
             (
                 toggle_debug_mode,
-                (set_physics_renderer, set_shown_maze_button).run_if(resource_changed::<DebugMode>),
+                (set_physics_renderer, set_shown_maze_button)
+                    .run_if(resource_changed::<DebugModeEnabled>),
             ),
         );
     }
 }
 
-#[derive(Resource, Reflect, Default)]
+#[derive(Resource, Reflect, Default, Eq, PartialEq)]
 #[reflect(Resource)]
-struct DebugMode {
-    enabled: bool,
+pub(super) struct DebugModeEnabled(bool);
+
+impl DebugModeEnabled {
+    pub(super) fn enabled() -> Self {
+        Self(true)
+    }
+
+    pub(super) fn disabled() -> Self {
+        Self(false)
+    }
 }
 
 fn toggle_debug_mode(
     mut keyboard_input: MessageReader<KeyboardInput>,
-    mut debug_mode: ResMut<DebugMode>,
+    mut debug_mode: ResMut<DebugModeEnabled>,
 ) {
     for key in keyboard_input.read() {
         if key.key_code != KeyCode::Backquote || key.state != ButtonState::Pressed || key.repeat {
             continue;
         }
 
-        debug_mode.enabled = !debug_mode.enabled;
+        debug_mode.0 = !debug_mode.0;
     }
 }
 
 fn set_physics_renderer(
     mut debug_render_context: ResMut<DebugRenderContext>,
-    debug_mode: Res<DebugMode>,
+    debug_mode: Res<DebugModeEnabled>,
 ) {
-    debug_render_context.enabled = debug_mode.enabled;
+    debug_render_context.enabled = debug_mode.0;
 }
 
 fn set_shown_maze_button(
     mut maze_button_query: Query<&mut Node, With<MazeButton>>,
-    debug_mode: Res<DebugMode>,
+    debug_mode: Res<DebugModeEnabled>,
 ) {
     let mut maze_button_node = maze_button_query.single_mut().unwrap();
 
-    maze_button_node.display = if debug_mode.enabled {
+    maze_button_node.display = if debug_mode.0 {
         Display::DEFAULT
     } else {
         Display::None

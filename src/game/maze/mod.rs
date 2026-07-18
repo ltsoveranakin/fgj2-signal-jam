@@ -8,6 +8,7 @@ use bevy::math::USizeVec2;
 use bevy::prelude::*;
 use rand::prelude::{SliceRandom, SmallRng};
 use rand::{RngExt, SeedableRng};
+use std::ops::RangeInclusive;
 
 const PATH_INDEX: usize = 0;
 const WALL_INDEX: usize = 1;
@@ -20,7 +21,7 @@ impl Plugin for MazePlugin {
 
         app.init_resource::<MazeTileImageAssets>();
 
-        app.add_message::<PlaceMazeObjectsMessage>();
+        app.add_message::<LevelReadyMessage>();
 
         app.add_systems(Startup, load_assets)
             .add_systems(Update, (prepare_spawn_locations, send_generate_message));
@@ -49,26 +50,27 @@ fn send_generate_message(
 }
 
 #[derive(Message)]
-pub(super) struct PlaceMazeObjectsMessage {
+pub(super) struct LevelReadyMessage {
     pub(super) player: USizeVec2,
     pub(super) target: USizeVec2,
+    pub(super) story_index_range: Option<RangeInclusive<usize>>,
 }
 
 fn prepare_spawn_locations(
     mut maze_query: Query<&mut MazeMatrix>,
     mut maze_ready_message: MessageReader<MazeReadyMessage>,
-    mut place_maze_objects_message: MessageWriter<PlaceMazeObjectsMessage>,
+    mut level_ready_message: MessageWriter<LevelReadyMessage>,
 ) {
     for maze_ready in maze_ready_message.read() {
         let mut maze_matrix = maze_query.get_mut(maze_ready.tilemap_entity).unwrap();
 
         let spawn_points = find_points_in_maze(&mut maze_matrix);
 
-        place_maze_objects_message.write(spawn_points);
+        level_ready_message.write(spawn_points);
     }
 }
 
-fn find_points_in_maze(maze_matrix: &mut MazeMatrix) -> PlaceMazeObjectsMessage {
+fn find_points_in_maze(maze_matrix: &mut MazeMatrix) -> LevelReadyMessage {
     let midpoint_coord = maze_matrix.maze_size.div_ceil(2);
     let midpoint = USizeVec2::splat(midpoint_coord);
 
@@ -77,9 +79,10 @@ fn find_points_in_maze(maze_matrix: &mut MazeMatrix) -> PlaceMazeObjectsMessage 
     let player_loc = midpoint + create_offsets(spawn_radius, &mut maze_matrix.rng);
     let target_loc = midpoint + create_offsets(spawn_radius, &mut maze_matrix.rng);
 
-    PlaceMazeObjectsMessage {
+    LevelReadyMessage {
         player: find_valid_spawn_spot(maze_matrix, player_loc),
         target: find_valid_spawn_spot(maze_matrix, target_loc),
+        story_index_range: None,
     }
 }
 

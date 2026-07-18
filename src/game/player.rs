@@ -1,5 +1,6 @@
-use crate::game::maze::PlaceMazeObjectsMessage;
+use crate::game::maze::LevelReadyMessage;
 use crate::game::maze::generator::TILE_SIZE_U32;
+use crate::game::story::StoryBoard;
 use crate::game::z_coord::PLAYER_Z_COORD;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
@@ -32,14 +33,22 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
         Velocity::zero(),
-        Ccd::enabled(),
+        GravityScale(0.0),
+        Name::new("Player"),
     ));
 }
 
 fn move_player(
     mut player_query: Query<&mut Velocity, With<Player>>,
+    story_board_query: Query<&Node, With<StoryBoard>>,
     key_input: Res<ButtonInput<KeyCode>>,
 ) {
+    let story_board_node = story_board_query.single().unwrap();
+
+    if story_board_node.display == Display::Flex {
+        return;
+    }
+
     let mut player_velocity = player_query.single_mut().unwrap();
     let mut move_dir = Vec2::ZERO;
 
@@ -68,9 +77,9 @@ fn move_player(
 
 fn place_player_in_maze(
     mut player_query: Query<(&mut Transform, &mut Visibility), With<Player>>,
-    mut place_maze_objects_message: MessageReader<PlaceMazeObjectsMessage>,
+    mut level_ready_message: MessageReader<LevelReadyMessage>,
 ) {
-    for place_maze_objects in place_maze_objects_message.read() {
+    for place_maze_objects in level_ready_message.read() {
         let (mut player_transform, mut player_visibility) = player_query.single_mut().unwrap();
 
         player_transform.translation = (place_maze_objects.player * (TILE_SIZE_U32 as usize))

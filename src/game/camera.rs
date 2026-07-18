@@ -1,3 +1,4 @@
+use crate::debug::DebugModeEnabled;
 use crate::game::player::Player;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
@@ -9,7 +10,10 @@ pub(super) struct GameCameraPlugin;
 impl Plugin for GameCameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_camera)
-            .add_systems(Update, zoom_camera)
+            .add_systems(
+                Update,
+                zoom_camera.run_if(resource_equals(DebugModeEnabled::enabled())),
+            )
             .add_systems(PostUpdate, move_camera_to_player);
     }
 }

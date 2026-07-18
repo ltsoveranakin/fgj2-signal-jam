@@ -1,5 +1,5 @@
 use crate::game::level::{LevelData, LevelsData, SetLevelMessage};
-use crate::game::maze::PlaceMazeObjectsMessage;
+use crate::game::maze::LevelReadyMessage;
 use crate::game::maze::generator::{HALF_TILE_SIZE_F32, TILE_SIZE_F32};
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
@@ -24,16 +24,22 @@ fn spawn_level_parent(mut commands: Commands) {
 fn create_level_on_set(
     mut commands: Commands,
     levels_data: Res<LevelsData>,
+    level_assets: ResMut<Assets<LevelData>>,
     mut set_level_message: MessageReader<SetLevelMessage>,
-    mut place_maze_objects_message: MessageWriter<PlaceMazeObjectsMessage>,
+    mut level_ready_message: MessageWriter<LevelReadyMessage>,
 ) {
     for set_level in set_level_message.read() {
+        let level_data_handle = &levels_data.levels[set_level.0];
+
+        let level_data = level_assets.get(level_data_handle).unwrap();
+
         let LevelData {
             player_spawn,
             target_spawn,
             level_size,
             walls,
-        } = &levels_data.levels[set_level.0];
+            story,
+        } = level_data;
 
         #[cfg(debug_assertions)]
         let mut collider_positions =
@@ -91,9 +97,10 @@ fn create_level_on_set(
             commands.spawn(collision_box(right_border));
         }
 
-        place_maze_objects_message.write(PlaceMazeObjectsMessage {
+        level_ready_message.write(LevelReadyMessage {
             player: player_spawn.as_usizevec2(),
             target: target_spawn.as_usizevec2(),
+            story_index_range: Some(story.clone()),
         });
     }
 }

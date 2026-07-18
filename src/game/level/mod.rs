@@ -3,15 +3,18 @@ mod create_level;
 use crate::game::level::create_level::CreateLevelPlugin;
 use crate::ui::start_menu::StartGameMessage;
 use bevy::prelude::*;
+use bevy_common_assets::json::JsonAssetPlugin;
 use serde::Deserialize;
+use std::ops::RangeInclusive;
 
-static LEVELS: [&str; 1] = [include_str!("levels/level_0.json")];
+static LEVEL_COUNT: usize = 1;
 
 pub(super) struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(CreateLevelPlugin);
+        app.add_plugins(JsonAssetPlugin::<LevelData>::new(&["json"]))
+            .add_plugins(CreateLevelPlugin);
 
         app.init_resource::<LevelsData>();
 
@@ -24,15 +27,16 @@ impl Plugin for LevelPlugin {
 
 #[derive(Resource, Default)]
 struct LevelsData {
-    levels: Vec<LevelData>,
+    levels: Vec<Handle<LevelData>>,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Asset, TypePath, Deserialize)]
 struct LevelData {
     player_spawn: UVec2,
     target_spawn: UVec2,
     level_size: UVec2,
     walls: Vec<WallData>,
+    story: RangeInclusive<usize>,
 }
 
 #[derive(Deserialize)]
@@ -43,19 +47,20 @@ struct WallData {
     height: u32,
     #[serde(rename = "w")]
     width: u32,
-    #[serde(rename = "t")]
+    #[serde(rename = "ty")]
     wall_type: u32,
 }
 
 #[derive(Message)]
 struct SetLevelMessage(usize);
 
-fn load_levels(mut levels_data: ResMut<LevelsData>) {
-    for (i, level_json) in LEVELS.iter().enumerate() {
-        let level_data = serde_json::from_str(level_json).unwrap();
+fn load_levels(mut levels_data: ResMut<LevelsData>, assert_server: Res<AssetServer>) {
+    for i in 0..LEVEL_COUNT {
+        let level_data: Handle<LevelData> = assert_server.load(format!("level/level_{i}.json"));
+
         levels_data.levels.push(level_data);
 
-        println!("Loaded level {}", i);
+        info!("Loaded level {}", i);
     }
 }
 

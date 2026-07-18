@@ -1,4 +1,4 @@
-use crate::game::maze::PlaceMazeObjectsMessage;
+use crate::game::maze::LevelReadyMessage;
 use crate::game::maze::generator::TILE_SIZE_U32;
 use crate::game::z_coord::TARGET_Z_COORD;
 use bevy::prelude::*;
@@ -31,9 +31,9 @@ fn spawn_startup_target(mut commands: Commands, asset_server: Res<AssetServer>) 
 
 fn place_target_in_maze(
     mut target_query: Query<&mut Transform, With<GameTarget>>,
-    mut place_maze_objects_message: MessageReader<PlaceMazeObjectsMessage>,
+    mut level_ready_message: MessageReader<LevelReadyMessage>,
 ) {
-    for place_maze_objects in place_maze_objects_message.read() {
+    for place_maze_objects in level_ready_message.read() {
         let mut target_transform = target_query.single_mut().unwrap();
 
         target_transform.translation = (place_maze_objects.target * (TILE_SIZE_U32 as usize))
