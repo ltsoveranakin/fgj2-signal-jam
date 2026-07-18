@@ -18,7 +18,6 @@ impl Plugin for DebugPlugin {
             EguiPlugin::default(),
             WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::Backquote)),
         ));
-
         app.init_resource::<DebugMode>();
 
         app.add_systems(
