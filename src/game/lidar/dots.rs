@@ -116,70 +116,62 @@ fn move_dots(
     let target_entity = target_query.single().unwrap();
     let rapier_context = rapier_context.single().unwrap();
 
-    let distance_to_travel_this_tick = LIDAR_DOT_SPEED * time.delta_secs();
+    let toi: bevy_rapier2d::prelude::Real = LIDAR_DOT_SPEED * time.delta_secs();
 
     for (mut lidar_dot, mut fade_dot, mut dot_transform) in dot_query.iter_mut() {
-        let mut distance_remaining_to_travel_this_tick = distance_to_travel_this_tick;
+        let current_dot_position = dot_transform.translation.truncate();
 
-        loop {
-            if distance_remaining_to_travel_this_tick <= 0.0 {
-                break;
+        let solid = true;
+        let predicate = |entity| {
+            if lidar_dot.last_entity_hit == entity {
+                false
+            } else {
+                true
             }
+        };
+        let query = QueryFilter::new()
+            .exclude_collider(player_entity)
+            .predicate(&predicate);
 
-            let current_dot_position = dot_transform.translation.truncate();
+        debug_assert!(lidar_dot.direction.is_normalized());
 
-            let solid = true;
-            let predicate = |entity| {
-                if lidar_dot.last_entity_hit == entity {
-                    false
-                } else {
-                    true
-                }
-            };
-            let query = QueryFilter::new()
-                .exclude_collider(player_entity)
-                .predicate(&predicate);
+        let (entity_hit, hit_result) = if let Some(result) = rapier_context.cast_ray_and_get_normal(
+            current_dot_position,
+            lidar_dot.direction,
+            toi,
+            solid,
+            query,
+        ) {
+            result
+        } else {
+            dot_transform
+                .translation
+                .assign_from(current_dot_position + (lidar_dot.direction * toi));
+            continue;
+        };
 
-            let (entity_hit, hit_result) = if let Some(result) = rapier_context
-                .cast_ray_and_get_normal(
-                    current_dot_position,
-                    lidar_dot.direction,
-                    distance_remaining_to_travel_this_tick as bevy_rapier2d::prelude::Real,
-                    solid,
-                    query,
-                ) {
-                result
-            } else {
-                dot_transform.translation = (current_dot_position
-                    + (lidar_dot.direction * distance_remaining_to_travel_this_tick))
-                    .extend(dot_transform.translation.z);
-                break;
-            };
+        dot_transform.translation.assign_from(hit_result.point);
 
-            dot_transform.translation.assign_from(hit_result.point);
+        let wall_fade_dot = if entity_hit == target_entity {
+            FadeDot::new(WALL_DOT_ALIVE_TIME, css::GREEN, css::WHITE.with_alpha(0.0))
+        } else {
+            FadeDot::new_alpha(WALL_DOT_ALIVE_TIME, Color::WHITE)
+        };
 
-            let wall_fade_dot = if entity_hit == target_entity {
-                FadeDot::new(WALL_DOT_ALIVE_TIME, css::GREEN, css::WHITE.with_alpha(0.0))
-            } else {
-                FadeDot::new_alpha(WALL_DOT_ALIVE_TIME, Color::WHITE)
-            };
+        commands.spawn((
+            wall_fade_dot,
+            Sprite::from_image(asset_server.load("image/particle/lidar_dot.png")),
+            *dot_transform,
+        ));
 
-            commands.spawn((
-                wall_fade_dot,
-                Sprite::from_image(asset_server.load("image/particle/lidar_dot.png")),
-                *dot_transform,
-            ));
+        let reflected_dir = (lidar_dot.direction
+            - (2.0 * (lidar_dot.direction * hit_result.normal)) * hit_result.normal)
+            .normalize();
 
-            distance_remaining_to_travel_this_tick -= hit_result.time_of_impact;
+        lidar_dot.last_entity_hit = entity_hit;
+        lidar_dot.direction = reflected_dir;
 
-            let reflected_dir = lidar_dot.direction
-                - (2.0 * (lidar_dot.direction * hit_result.normal)) * hit_result.normal;
-
-            lidar_dot.last_entity_hit = entity_hit;
-            lidar_dot.direction = reflected_dir;
-
-            fade_dot.fade_time_elapsed += BOUNCE_ALIVE_TIME_PENALTY;
-        }
+        fade_dot.fade_time_elapsed += BOUNCE_ALIVE_TIME_PENALTY;
     }
 }
 
