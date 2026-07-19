@@ -1,6 +1,6 @@
 use crate::control::inputs_allowed;
 use crate::game::level::create_level::{NextLevelSensor, UnlockingBorder};
-use crate::game::level::{NextLevelMessage, UnlockLevelMessage};
+use crate::game::level::{CurrentLevel, UnlockLevelMessage};
 use crate::game::maze::LevelReadyMessage;
 use crate::game::maze::generator::TILE_SIZE_U32;
 use crate::game::story::StoryBoard;
@@ -105,8 +105,8 @@ fn place_player_in_maze(
 fn player_touch_level_progress(
     player_marker_query: Query<(), With<Player>>,
     level_end_marker_query: Query<(), With<NextLevelSensor>>,
+    mut current_level: ResMut<CurrentLevel>,
     mut collision_event: MessageReader<CollisionEvent>,
-    mut next_level_message: MessageWriter<NextLevelMessage>,
 ) {
     for collision in collision_event.read() {
         match collision {
@@ -117,7 +117,7 @@ fn player_touch_level_progress(
                     &player_marker_query,
                     &level_end_marker_query,
                 ) {
-                    next_level_message.write_default();
+                    current_level.next();
                 }
             }
 

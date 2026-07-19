@@ -1,6 +1,5 @@
+use crate::game::level::CurrentLevel;
 use crate::ui::start_menu::MazeButton;
-use bevy::anti_alias::contrast_adaptive_sharpening::cas;
-use bevy::color::palettes::css;
 use bevy::input::ButtonState;
 use bevy::input::common_conditions::input_toggle_active;
 use bevy::input::keyboard::KeyboardInput;
@@ -25,6 +24,7 @@ impl Plugin for DebugPlugin {
             Update,
             (
                 toggle_debug_mode,
+                change_level.run_if(resource_equals(DebugModeEnabled::enabled())),
                 (set_physics_renderer, set_shown_maze_button)
                     .run_if(resource_changed::<DebugModeEnabled>),
             ),
@@ -77,4 +77,14 @@ fn set_shown_maze_button(
     } else {
         Display::None
     };
+}
+
+fn change_level(key_input: Res<ButtonInput<KeyCode>>, mut current_level: ResMut<CurrentLevel>) {
+    if key_input.just_pressed(KeyCode::Equal) {
+        current_level.next();
+    }
+
+    if key_input.just_pressed(KeyCode::Minus) {
+        current_level.prev();
+    }
 }

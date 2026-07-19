@@ -1,9 +1,9 @@
 mod camera;
-mod level;
+pub(super) mod level;
 pub(super) mod lidar;
 mod maze;
 mod player;
-pub(crate) mod story;
+pub(super) mod story;
 mod target;
 mod z_coord;
 

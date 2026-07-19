@@ -21,12 +21,10 @@ impl Plugin for LevelPlugin {
         app.init_resource::<LevelsData>()
             .init_resource::<CurrentLevel>();
 
-        app.add_message::<SetLevelMessage>()
-            .add_message::<NextLevelMessage>()
-            .add_message::<UnlockLevelMessage>();
+        app.add_message::<UnlockLevelMessage>();
 
         app.add_systems(Startup, load_levels)
-            .add_systems(Update, (rcv_start_game, rcv_next_level, unlock_level));
+            .add_systems(Update, (rcv_start_game, unlock_level));
     }
 }
 
@@ -63,17 +61,29 @@ enum WallType {
     Hole,
 }
 
-#[derive(Message)]
-pub(super) struct SetLevelMessage(usize);
-
-#[derive(Message, Default)]
-pub(super) struct NextLevelMessage;
-
 #[derive(Message, Default)]
 pub(super) struct UnlockLevelMessage;
 
 #[derive(Resource, Default)]
-struct CurrentLevel(usize);
+pub(crate) struct CurrentLevel(Option<usize>);
+
+impl CurrentLevel {
+    pub(crate) fn next(&mut self) {
+        if let Some(level) = &mut self.0 {
+            *level += 1;
+        } else {
+            self.0 = None;
+        }
+    }
+
+    pub(crate) fn prev(&mut self) {
+        if let Some(level) = &mut self.0 {
+            if *level > 0 {
+                *level -= 1;
+            }
+        }
+    }
+}
 
 fn load_levels(mut levels_data: ResMut<LevelsData>, assert_server: Res<AssetServer>) {
     for i in 0..LEVEL_COUNT {
@@ -87,23 +97,12 @@ fn load_levels(mut levels_data: ResMut<LevelsData>, assert_server: Res<AssetServ
 
 fn rcv_start_game(
     mut start_game_message: MessageReader<StartGameMessage>,
-    mut set_level_message: MessageWriter<SetLevelMessage>,
+    mut current_level: ResMut<CurrentLevel>,
 ) {
     for start_game in start_game_message.read() {
         if *start_game == StartGameMessage::Normal {
-            set_level_message.write(SetLevelMessage(0));
+            current_level.0 = Some(0);
         }
-    }
-}
-
-fn rcv_next_level(
-    mut current_level: ResMut<CurrentLevel>,
-    mut next_level_message: MessageReader<NextLevelMessage>,
-    mut set_level_message: MessageWriter<SetLevelMessage>,
-) {
-    for _ in next_level_message.read() {
-        current_level.0 += 1;
-        set_level_message.write(SetLevelMessage(current_level.0));
     }
 }
 
