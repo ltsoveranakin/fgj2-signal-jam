@@ -1,35 +1,27 @@
 {
     "player_spawn": [
         1,
-        5
+        1
     ],
     "target_spawn": [
-        8,
-        5
+        0,
+        0
     ],
     "level_size": [
-        11,
-        11
+        4,
+        4
     ],
     "walls": [
         {
             "ty": "Solid",
-            "h": 5,
+            "h": 1,
             "w": 1,
-            "x": 4,
-            "y": 3
+            "x": 2,
+            "y": 2
         }
     ],
-    "story": [
-        0,
-        2
-    ],
     "exit": [
-        11,
-        5
-    ],
-    "target_dialog": [
-        3,
-        4
+        4,
+        2
     ]
 }
