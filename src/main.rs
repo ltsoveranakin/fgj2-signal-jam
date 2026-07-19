@@ -2,6 +2,7 @@ mod assign_vec;
 mod control;
 mod debug;
 mod game;
+mod sprite_sheet;
 mod ui;
 
 use crate::debug::DebugPlugin;

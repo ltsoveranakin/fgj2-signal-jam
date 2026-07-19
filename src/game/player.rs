@@ -30,16 +30,39 @@ impl Plugin for PlayerPlugin {
 #[derive(Component)]
 pub(super) struct Player;
 
+#[derive(Component)]
+pub(super) enum PlayerFacing {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+impl PlayerFacing {
+    pub(super) fn direction(&self) -> f32 {
+        match self {
+            Self::Up => Vec2::new(0.0, 1.0).to_angle(),
+
+            Self::Down => Vec2::new(0.0, -1.0).to_angle(),
+
+            Self::Left => Vec2::new(-1.0, 0.0).to_angle(),
+
+            Self::Right => Vec2::new(1.0, 0.0).to_angle(),
+        }
+    }
+}
+
 fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Player,
+        PlayerFacing::Right,
         Transform {
             translation: Vec3::new(0.0, 0.0, PLAYER_Z_COORD),
             scale: Vec3::splat(0.3),
             ..default()
         },
-        Visibility::Hidden,
         Sprite::from_image(asset_server.load("image/character/player.png")),
+        Visibility::Hidden,
         Collider::ball(4.0),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
@@ -51,7 +74,7 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn move_player(
-    mut player_query: Query<&mut Velocity, With<Player>>,
+    mut player_query: Query<(&mut Velocity, &mut PlayerFacing)>,
     story_board_query: Query<&Node, With<StoryBoard>>,
     key_input: Res<ButtonInput<KeyCode>>,
 ) {
@@ -61,23 +84,27 @@ fn move_player(
         return;
     }
 
-    let mut player_velocity = player_query.single_mut().unwrap();
+    let (mut player_velocity, mut player_facing) = player_query.single_mut().unwrap();
     let mut move_dir = Vec2::ZERO;
 
     if key_input.pressed(KeyCode::KeyW) || key_input.pressed(KeyCode::ArrowUp) {
         move_dir.y += 1.0;
+        *player_facing = PlayerFacing::Up;
     }
 
     if key_input.pressed(KeyCode::KeyS) || key_input.pressed(KeyCode::ArrowDown) {
         move_dir.y -= 1.0;
+        *player_facing = PlayerFacing::Down;
     }
 
     if key_input.pressed(KeyCode::KeyD) || key_input.pressed(KeyCode::ArrowRight) {
         move_dir.x += 1.0;
+        *player_facing = PlayerFacing::Right;
     }
 
     if key_input.pressed(KeyCode::KeyA) || key_input.pressed(KeyCode::ArrowLeft) {
         move_dir.x -= 1.0;
+        *player_facing = PlayerFacing::Left;
     }
 
     if move_dir != Vec2::ZERO {

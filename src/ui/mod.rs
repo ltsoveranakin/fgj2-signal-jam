@@ -1,6 +1,8 @@
 pub(super) mod start_menu;
+pub(super) mod story_panel;
 
 use crate::ui::start_menu::StartMenuPlugin;
+use crate::ui::story_panel::StoryPanelPlugin;
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, PrimaryWindow, SystemCursorIcon};
 
@@ -8,7 +10,7 @@ pub(super) struct GameUIPlugin;
 
 impl Plugin for GameUIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(StartMenuPlugin);
+        app.add_plugins((StartMenuPlugin, StoryPanelPlugin));
 
         app.add_systems(Update, button_mouse_pointer);
     }

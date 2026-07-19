@@ -1,11 +1,8 @@
 use crate::control::story_board_shown;
 use crate::game::maze::LevelReadyMessage;
+use crate::sprite_sheet::story_board_rect_from_sheet;
 use bevy::prelude::*;
 use std::ops::RangeInclusive;
-
-const PADDING: f32 = 1.0;
-const OFFSET: Vec2 = Vec2::new(1.0, 1.0);
-const BOARD_DIM: Vec2 = Vec2::new(128.0, 32.0);
 
 pub(super) struct StoryBoardPlugin;
 
@@ -44,13 +41,6 @@ struct BoardRange {
     current_index: usize,
 }
 
-fn story_board_image_slice(story_index: usize) -> Rect {
-    let start = Vec2::new((BOARD_DIM.x + PADDING) * story_index as f32, 0.0) + OFFSET;
-    let end = start + BOARD_DIM;
-
-    Rect::from_corners(start, end)
-}
-
 fn spawn_story_root_ui_components(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn((
@@ -71,7 +61,7 @@ fn spawn_story_root_ui_components(mut commands: Commands, asset_server: Res<Asse
             },
             ImageNode {
                 image: asset_server.load("image/story/story_boards.png"),
-                rect: Some(story_board_image_slice(0)),
+                rect: Some(story_board_rect_from_sheet(0)),
                 ..default()
             },
             StoryBoard { board_range: None },
@@ -113,7 +103,7 @@ fn update_story_board(
             } else {
                 node.display = Display::Flex;
 
-                image_node.rect = Some(story_board_image_slice(board_range.current_index));
+                image_node.rect = Some(story_board_rect_from_sheet(board_range.current_index));
             }
         } else {
             hide_board = true;

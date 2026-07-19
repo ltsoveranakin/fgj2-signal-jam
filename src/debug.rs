@@ -1,4 +1,5 @@
 use crate::game::level::{CurrentLevel, LevelData, LevelsData};
+use crate::game::lidar::dots::LidarNextUseTime;
 use crate::ui::start_menu::MazeButton;
 use bevy::input::ButtonState;
 use bevy::input::common_conditions::input_toggle_active;
@@ -48,8 +49,9 @@ impl DebugModeEnabled {
 }
 
 fn toggle_debug_mode(
-    mut keyboard_input: MessageReader<KeyboardInput>,
     mut debug_mode: ResMut<DebugModeEnabled>,
+    mut lidar_next_use_time: ResMut<LidarNextUseTime>,
+    mut keyboard_input: MessageReader<KeyboardInput>,
 ) {
     for key in keyboard_input.read() {
         if key.key_code != KeyCode::Backquote || key.state != ButtonState::Pressed || key.repeat {
@@ -57,12 +59,13 @@ fn toggle_debug_mode(
         }
 
         debug_mode.0 = !debug_mode.0;
+        lidar_next_use_time.0 = 0.0;
     }
 }
 
 fn set_physics_renderer(
-    mut debug_render_context: ResMut<DebugRenderContext>,
     debug_mode: Res<DebugModeEnabled>,
+    mut debug_render_context: ResMut<DebugRenderContext>,
 ) {
     debug_render_context.enabled = debug_mode.0;
 }

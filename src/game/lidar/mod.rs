@@ -1,4 +1,4 @@
-mod dots;
+pub(crate) mod dots;
 
 use crate::game::lidar::dots::LidarDotsPlugin;
 use bevy::prelude::*;

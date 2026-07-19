@@ -1,3 +1,5 @@
+use crate::ui::story_panel::ShowStoryPanelMessage;
+pub(crate) use crate::ui::story_panel::StartGameMessage;
 use bevy::color::palettes::css;
 use bevy::prelude::*;
 
@@ -5,23 +7,15 @@ pub(super) struct StartMenuPlugin;
 
 impl Plugin for StartMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<StartGameMessage>();
-
         app.add_systems(Startup, spawn_ui_elements).add_systems(
             Update,
             (
                 start_game_click,
                 maze_btn_click,
-                hide_root_ui_on_game_start.run_if(on_message::<StartGameMessage>),
+                hide_root_ui_on_game_start.run_if(on_message::<ShowStoryPanelMessage>),
             ),
         );
     }
-}
-
-#[derive(Message, Eq, PartialEq)]
-pub(crate) enum StartGameMessage {
-    Normal,
-    Maze,
 }
 
 #[derive(Component, Default, Copy, Clone)]
@@ -100,11 +94,11 @@ fn hide_root_ui_on_game_start(
 
 fn start_game_click(
     start_button_query: Query<&Interaction, (Changed<Interaction>, With<PlayButton>)>,
-    mut start_game_message: MessageWriter<StartGameMessage>,
+    mut show_story_panel_message: MessageWriter<ShowStoryPanelMessage>,
 ) {
     for interaction in start_button_query.iter() {
         if *interaction == Interaction::Pressed {
-            start_game_message.write(StartGameMessage::Normal);
+            show_story_panel_message.write_default();
         }
     }
 }

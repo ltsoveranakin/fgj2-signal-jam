@@ -2,19 +2,21 @@ use crate::assign_vec::AssignVec;
 use crate::control::inputs_allowed;
 use crate::game::level::WallType;
 use crate::game::level::create_level::LevelParent;
-use crate::game::player::Player;
+use crate::game::player::{Player, PlayerFacing};
 use crate::game::target::GameTarget;
 use crate::game::z_coord::LIDAR_DOT_Z_COORD;
 use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy_rapier2d::pipeline::QueryFilter;
 use bevy_rapier2d::prelude::*;
+use std::f32::consts::PI;
 
 const LIDAR_DOT_SPEED: f32 = 150.0;
-const LIDAR_DOTS_COUNT: usize = 200;
+const LIDAR_DOTS_COUNT: usize = 20;
+const LIDAR_CONE: f32 = PI / 3.0;
 const WALL_DOT_ALIVE_TIME: f32 = 10.0;
 const LIDAR_DOT_ALIVE_TIME: f32 = 10.0;
-const BOUNCE_ALIVE_TIME_PENALTY: f32 = 0.2;
+const BOUNCE_ALIVE_TIME_PENALTY: f32 = 0.3;
 const LIDAR_COOLDOWN: f32 = 10.0;
 
 pub(super) struct LidarDotsPlugin;
@@ -62,11 +64,11 @@ impl FadeDot {
 }
 
 #[derive(Resource, Default)]
-struct LidarNextUseTime(f32);
+pub(crate) struct LidarNextUseTime(pub(crate) f32);
 
 fn spawn_dots(
     mut commands: Commands,
-    player_query: Query<&Transform, (With<Player>, Without<LidarDot>)>,
+    player_query: Query<(&Transform, &PlayerFacing)>,
     level_parent_query: Query<Entity, With<LevelParent>>,
     key_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
@@ -79,16 +81,18 @@ fn spawn_dots(
 
     let lidar_dot_sprite = asset_server.load("image/particle/lidar_dot.png");
 
-    let mut player_translation_lidar_dot_z = player_query.single().unwrap().translation;
+    let (player_transform, player_facing) = player_query.single().unwrap();
+
+    let mut player_translation_lidar_dot_z = player_transform.translation;
     player_translation_lidar_dot_z.z = LIDAR_DOT_Z_COORD;
 
-    let step = (std::f32::consts::PI * 2.0) / (LIDAR_DOTS_COUNT as f32);
+    let step = (LIDAR_CONE) / (LIDAR_DOTS_COUNT as f32);
 
     let parent_entity = level_parent_query.single().unwrap();
 
     commands.entity(parent_entity).with_children(move |parent| {
         for i in 0..LIDAR_DOTS_COUNT {
-            let angle = i as f32 * step;
+            let angle = (i as f32 * step) + (LIDAR_CONE * -0.5) + player_facing.direction();
             let direction = Vec2::from_angle(angle);
 
             parent.spawn((

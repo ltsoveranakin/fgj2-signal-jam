@@ -1,13 +1,14 @@
 pub(super) mod create_level;
 
 use crate::game::level::create_level::{CreateLevelPlugin, UnlockingBorder};
-use crate::ui::start_menu::StartGameMessage;
+
 use bevy::prelude::*;
 use bevy_common_assets::json::JsonAssetPlugin;
 use bevy_rapier2d::prelude::{Collider, ColliderDisabled};
 use serde::Deserialize;
 use std::ops::RangeInclusive;
-use std::process::exit;
+
+use crate::ui::story_panel::StartGameMessage;
 
 static LEVEL_COUNT: usize = 2;
 
