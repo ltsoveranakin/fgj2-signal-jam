@@ -1,3 +1,4 @@
+use crate::ui::credits_panel::ShowCreditsMessage;
 use crate::ui::story_panel::ShowStoryPanelMessage;
 pub(crate) use crate::ui::story_panel::StartGameMessage;
 use bevy::color::palettes::css;
@@ -10,8 +11,9 @@ impl Plugin for StartMenuPlugin {
         app.add_systems(Startup, spawn_ui_elements).add_systems(
             Update,
             (
-                start_game_click,
-                maze_btn_click,
+                start_game_button_click,
+                maze_button_click,
+                credits_button_click,
                 hide_root_ui_on_game_start.run_if(on_message::<ShowStoryPanelMessage>),
             ),
         );
@@ -26,6 +28,9 @@ pub(crate) struct MazeButton;
 
 #[derive(Component)]
 struct PlayButton;
+
+#[derive(Component)]
+struct CreditsButton;
 
 fn spawn_ui_elements(mut commands: Commands, asset_server: Res<AssetServer>) {
     let bg_image = asset_server.load("image/menu/menu_bg.png");
@@ -59,7 +64,8 @@ fn spawn_ui_elements(mut commands: Commands, asset_server: Res<AssetServer>) {
                     TextFont::from_font_size(FontSize::Rem(2.0))
                 ),
                 button("Play", Display::Flex, PlayButton),
-                button("Maze", Display::None, MazeButton)
+                button("Maze", Display::None, MazeButton),
+                button("Credits", Display::Flex, CreditsButton),
             ]
         )],
     ));
@@ -92,7 +98,7 @@ fn hide_root_ui_on_game_start(
     *root_visibility = Visibility::Hidden;
 }
 
-fn start_game_click(
+fn start_game_button_click(
     start_button_query: Query<&Interaction, (Changed<Interaction>, With<PlayButton>)>,
     mut show_story_panel_message: MessageWriter<ShowStoryPanelMessage>,
 ) {
@@ -103,13 +109,24 @@ fn start_game_click(
     }
 }
 
-fn maze_btn_click(
+fn maze_button_click(
     start_button_query: Query<&Interaction, (Changed<Interaction>, With<MazeButton>)>,
     mut start_game_message: MessageWriter<StartGameMessage>,
 ) {
     for interaction in start_button_query.iter() {
         if *interaction == Interaction::Pressed {
             start_game_message.write(StartGameMessage::Maze);
+        }
+    }
+}
+
+fn credits_button_click(
+    credits_button_query: Query<&Interaction, (Changed<Interaction>, With<CreditsButton>)>,
+    mut show_credits_message: MessageWriter<ShowCreditsMessage>,
+) {
+    for interaction in credits_button_query.iter() {
+        if *interaction == Interaction::Pressed {
+            show_credits_message.write_default();
         }
     }
 }

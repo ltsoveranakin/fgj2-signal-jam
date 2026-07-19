@@ -1,8 +1,25 @@
 use crate::game::story_board::StoryBoard;
 use bevy::prelude::*;
 
-pub(super) fn inputs_allowed(story_board_query: Query<&Node, With<StoryBoard>>) -> bool {
-    !story_board_shown(story_board_query)
+pub(super) struct ControlPlugin;
+
+impl Plugin for ControlPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_state(GameState::NotPlaying);
+    }
+}
+
+#[derive(States, Copy, Clone, Eq, PartialEq, Hash, Debug)]
+pub(super) enum GameState {
+    NotPlaying,
+    Playing,
+}
+
+pub(super) fn inputs_allowed(
+    story_board_query: Query<&Node, With<StoryBoard>>,
+    game_state: Res<State<GameState>>,
+) -> bool {
+    *game_state == GameState::Playing && !story_board_shown(story_board_query)
 }
 
 pub(super) fn story_board_shown(story_board_query: Query<&Node, With<StoryBoard>>) -> bool {

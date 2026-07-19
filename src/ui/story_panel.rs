@@ -1,3 +1,4 @@
+use crate::control::GameState;
 use crate::sprite_sheet::story_panel_rect_from_sheet;
 use bevy::asset::ErasedAssetLoader;
 use bevy::prelude::*;
@@ -15,7 +16,7 @@ impl Plugin for StoryPanelPlugin {
             Update,
             (
                 show_story_panel.run_if(on_message::<ShowStoryPanelMessage>),
-                hide_story_panel.run_if(on_message::<StartGameMessage>),
+                game_start.run_if(on_message::<StartGameMessage>),
                 story_panel_clicked,
             ),
         );
@@ -54,8 +55,8 @@ fn spawn_story_panel(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_child((
             StoryPanel { index: 0 },
             Node {
-                height: vh(100),
-                width: vh(100),
+                height: vmin(100),
+                width: vmin(100),
                 ..default()
             },
             ImageNode {
@@ -73,10 +74,15 @@ fn show_story_panel(mut story_panel_container_query: Query<&mut Node, With<Story
     container_node.display = Display::Flex;
 }
 
-fn hide_story_panel(mut story_panel_container_query: Query<&mut Node, With<StoryPanelContainer>>) {
+fn game_start(
+    mut story_panel_container_query: Query<&mut Node, With<StoryPanelContainer>>,
+    mut game_state: ResMut<NextState<GameState>>,
+) {
     let mut container_node = story_panel_container_query.single_mut().unwrap();
 
     container_node.display = Display::None;
+
+    game_state.set(GameState::Playing);
 }
 
 fn story_panel_clicked(
