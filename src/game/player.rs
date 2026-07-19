@@ -3,7 +3,7 @@ use crate::game::level::create_level::{NextLevelSensor, UnlockingBorder};
 use crate::game::level::{CurrentLevel, UnlockLevelMessage};
 use crate::game::maze::LevelReadyMessage;
 use crate::game::maze::generator::TILE_SIZE_U32;
-use crate::game::story::StoryBoard;
+use crate::game::story_board::StoryBoard;
 use crate::game::target::GameTarget;
 use crate::game::z_coord::PLAYER_Z_COORD;
 use bevy::prelude::*;

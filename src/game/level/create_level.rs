@@ -47,8 +47,11 @@ fn create_level(
         .spawn((Transform::default(), Visibility::Visible, LevelParent))
         .with_children(|parent| {
             let level_data_handle = &levels_data.levels[level_index];
+            info!("handle: {:?}", level_data_handle);
 
             let level_data = level_assets.get(level_data_handle).unwrap();
+
+            info!("level data: {:?}", level_data);
 
             let LevelData {
                 player_spawn,

@@ -1,4 +1,4 @@
-use crate::game::story::StoryBoard;
+use crate::game::story_board::StoryBoard;
 use bevy::prelude::*;
 
 pub(super) fn inputs_allowed(story_board_query: Query<&Node, With<StoryBoard>>) -> bool {

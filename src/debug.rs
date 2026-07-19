@@ -1,4 +1,4 @@
-use crate::game::level::CurrentLevel;
+use crate::game::level::{CurrentLevel, LevelData, LevelsData};
 use crate::ui::start_menu::MazeButton;
 use bevy::input::ButtonState;
 use bevy::input::common_conditions::input_toggle_active;
@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::{DebugRenderContext, RapierDebugRenderPlugin};
+use std::ops::DerefMut;
 
 pub(super) struct DebugPlugin;
 
@@ -79,12 +80,44 @@ fn set_shown_maze_button(
     };
 }
 
-fn change_level(key_input: Res<ButtonInput<KeyCode>>, mut current_level: ResMut<CurrentLevel>) {
+fn change_level(
+    key_input: Res<ButtonInput<KeyCode>>,
+    mut current_level: ResMut<CurrentLevel>,
+    levels_data: Res<LevelsData>,
+    asset_server: Res<AssetServer>,
+    mut is_reloading: Local<bool>,
+    mut reloading_index: Local<usize>,
+) {
     if key_input.just_pressed(KeyCode::Equal) {
         current_level.next();
     }
 
     if key_input.just_pressed(KeyCode::Minus) {
         current_level.prev();
+    }
+
+    if *is_reloading
+        && asset_server.is_loaded(
+            asset_server
+                .load::<LevelData>(format!("level/level_{}.json", *reloading_index))
+                .id(),
+        )
+    {
+        current_level.deref_mut(); // Trigger change detection and re-create level
+        *is_reloading = false;
+    }
+
+    if key_input.just_pressed(KeyCode::KeyR) {
+        let current_index = current_level.get();
+
+        asset_server.reload(format!("level/level_{current_index}.json"));
+
+        info!(
+            "Reloading current level {} levels: {:?}",
+            current_index, levels_data
+        );
+
+        *is_reloading = true;
+        *reloading_index = current_index;
     }
 }

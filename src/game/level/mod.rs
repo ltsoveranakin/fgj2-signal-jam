@@ -28,13 +28,13 @@ impl Plugin for LevelPlugin {
     }
 }
 
-#[derive(Resource, Default)]
-struct LevelsData {
-    levels: Vec<Handle<LevelData>>,
+#[derive(Resource, Default, Debug)]
+pub(crate) struct LevelsData {
+    pub(crate) levels: Vec<Handle<LevelData>>,
 }
 
-#[derive(Asset, TypePath, Deserialize)]
-struct LevelData {
+#[derive(Asset, TypePath, Deserialize, Debug)]
+pub(crate) struct LevelData {
     player_spawn: UVec2,
     target_spawn: UVec2,
     level_size: UVec2,
@@ -43,7 +43,7 @@ struct LevelData {
     exit: IVec2,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct WallData {
     x: u32,
     y: u32,
@@ -55,7 +55,7 @@ struct WallData {
     wall_type: WallType,
 }
 
-#[derive(Deserialize, Component, Copy, Clone)]
+#[derive(Deserialize, Component, Copy, Clone, Debug)]
 enum WallType {
     Solid,
     Hole,
@@ -82,6 +82,10 @@ impl CurrentLevel {
                 *level -= 1;
             }
         }
+    }
+
+    pub(crate) fn get(&self) -> usize {
+        self.0.unwrap_or_default()
     }
 }
 

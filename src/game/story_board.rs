@@ -7,9 +7,9 @@ const PADDING: f32 = 1.0;
 const OFFSET: Vec2 = Vec2::new(1.0, 1.0);
 const BOARD_DIM: Vec2 = Vec2::new(128.0, 32.0);
 
-pub(super) struct StoryPlugin;
+pub(super) struct StoryBoardPlugin;
 
-impl Plugin for StoryPlugin {
+impl Plugin for StoryBoardPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_story_root_ui_components)
             .add_systems(
