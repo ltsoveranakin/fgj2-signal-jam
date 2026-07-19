@@ -3,7 +3,7 @@ use crate::control::inputs_allowed;
 use crate::game::level::WallType;
 use crate::game::level::create_level::LevelParent;
 use crate::game::player::{Player, PlayerFacing};
-use crate::game::target::GameTarget;
+use crate::game::target::{GameTarget, HitTargetMessage};
 use crate::game::z_coord::LIDAR_DOT_Z_COORD;
 use bevy::color::palettes::css;
 use bevy::prelude::*;
@@ -123,6 +123,7 @@ fn move_dots(
     level_parent_query: Query<Entity, With<LevelParent>>,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
+    mut hit_target_message: MessageWriter<HitTargetMessage>,
     rapier_context: ReadRapierContext,
 ) {
     let player_entity = player_query.single().unwrap();
@@ -163,26 +164,31 @@ fn move_dots(
             continue;
         };
 
+        dot_transform.translation.assign_from(hit_result.point);
+
+        let mut absorbed = None;
+
         if let Ok(wall_type) = wall_type_query.get(entity_hit) {
             if matches!(wall_type, WallType::Absorb) {
-                commands.entity(dot_entity).remove::<LidarDot>();
-                *fade_dot = FadeDot::new_alpha(1.0, css::TEAL);
-                continue;
+                absorbed = Some(FadeDot::new_alpha(1.0, css::TEAL));
             }
         }
 
-        dot_transform.translation.assign_from(hit_result.point);
+        if entity_hit == target_entity {
+            absorbed = Some(FadeDot::new_alpha(1.0, css::GREEN));
+            hit_target_message.write_default();
+        }
 
-        let wall_fade_dot = if entity_hit == target_entity {
-            FadeDot::new(WALL_DOT_ALIVE_TIME, css::GREEN, css::WHITE.with_alpha(0.0))
-        } else {
-            FadeDot::new_alpha(WALL_DOT_ALIVE_TIME, Color::WHITE)
-        };
+        if let Some(absorbed) = absorbed {
+            *fade_dot = absorbed;
+            commands.entity(dot_entity).remove::<LidarDot>();
+            continue;
+        }
 
         let level_parent = level_parent_query.single().unwrap();
 
         commands.entity(level_parent).with_child((
-            wall_fade_dot,
+            FadeDot::new_alpha(WALL_DOT_ALIVE_TIME, Color::WHITE),
             Sprite::from_image(asset_server.load("image/particle/lidar_dot.png")),
             *dot_transform,
         ));

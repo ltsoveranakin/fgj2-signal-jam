@@ -1,15 +1,15 @@
 use crate::control::inputs_allowed;
-use crate::game::level::create_level::{NextLevelSensor, UnlockingBorder};
-use crate::game::level::{CurrentLevel, UnlockLevelMessage};
+use crate::game::level::CurrentLevel;
+use crate::game::level::create_level::NextLevelSensor;
 use crate::game::maze::LevelReadyMessage;
-use crate::game::maze::generator::TILE_SIZE_U32;
+use crate::game::maze::generator::{HALF_TILE_SIZE_F32, TILE_SIZE_U32};
 use crate::game::story_board::StoryBoard;
-use crate::game::target::GameTarget;
 use crate::game::z_coord::PLAYER_Z_COORD;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 const PLAYER_SPEED: f32 = 75.0;
+pub(super) const PLAYER_INTERACT_RANGE: f32 = HALF_TILE_SIZE_F32;
 
 pub(super) struct PlayerPlugin;
 
@@ -21,7 +21,6 @@ impl Plugin for PlayerPlugin {
                 place_player_in_maze,
                 move_player.run_if(inputs_allowed),
                 player_touch_level_progress,
-                player_touch_target,
             ),
         );
     }
@@ -145,31 +144,6 @@ fn player_touch_level_progress(
                     &level_end_marker_query,
                 ) {
                     current_level.next();
-                }
-            }
-
-            CollisionEvent::Stopped(..) => {}
-        }
-    }
-}
-
-fn player_touch_target(
-    player_marker_query: Query<(), With<Player>>,
-    target_marker_query: Query<(), With<GameTarget>>,
-    mut collision_event: MessageReader<CollisionEvent>,
-    mut unlock_level_message: MessageWriter<UnlockLevelMessage>,
-) {
-    for collision in collision_event.read() {
-        match collision {
-            CollisionEvent::Started(entity_1, entity_2, _flags) => {
-                if let Some((_, _)) = match_colliders(
-                    *entity_1,
-                    *entity_2,
-                    &player_marker_query,
-                    &target_marker_query,
-                ) {
-                    info!("touch targ");
-                    unlock_level_message.write_default();
                 }
             }
 
