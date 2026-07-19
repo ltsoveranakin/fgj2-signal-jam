@@ -25,6 +25,10 @@ fn spawn_camera(mut commands: Commands) {
             clear_color: ClearColorConfig::Custom(CLEAR_COLOR),
             ..default()
         },
+        Projection::Orthographic(OrthographicProjection {
+            scale: 0.2,
+            ..OrthographicProjection::default_2d()
+        }),
     ));
 }
 

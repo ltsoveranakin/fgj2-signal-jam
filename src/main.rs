@@ -1,4 +1,5 @@
 mod assign_vec;
+mod control;
 mod debug;
 mod game;
 mod ui;

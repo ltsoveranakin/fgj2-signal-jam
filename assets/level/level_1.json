@@ -1,0 +1,20 @@
+{
+    "player_spawn": [
+        1,
+        1
+    ],
+    "target_spawn": [
+        0,
+        0
+    ],
+    "level_size": [
+        4,
+        4
+    ],
+    "walls": [
+    ],
+    "exit": [
+        4,
+        2
+    ]
+}

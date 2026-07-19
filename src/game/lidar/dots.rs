@@ -1,4 +1,6 @@
 use crate::assign_vec::AssignVec;
+use crate::control::inputs_allowed;
+use crate::game::level::create_level::LevelParent;
 use crate::game::player::Player;
 use crate::game::target::GameTarget;
 use crate::game::z_coord::LIDAR_DOT_Z_COORD;
@@ -11,7 +13,7 @@ const LIDAR_DOT_SPEED: f32 = 150.0;
 const LIDAR_DOTS_COUNT: usize = 200;
 const WALL_DOT_ALIVE_TIME: f32 = 10.0;
 const LIDAR_DOT_ALIVE_TIME: f32 = 10.0;
-const BOUNCE_ALIVE_TIME_PENALTY: f32 = 0.5;
+const BOUNCE_ALIVE_TIME_PENALTY: f32 = 0.2;
 const LIDAR_COOLDOWN: f32 = 10.0;
 
 pub(super) struct LidarDotsPlugin;
@@ -20,7 +22,10 @@ impl Plugin for LidarDotsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<LidarNextUseTime>();
 
-        app.add_systems(Update, (position_dots_ready, move_dots, fade_wall_dots));
+        app.add_systems(
+            Update,
+            (spawn_dots.run_if(inputs_allowed), move_dots, fade_wall_dots),
+        );
     }
 }
 
@@ -29,9 +34,6 @@ struct LidarDot {
     direction: Vec2,
     last_entity_hit: Entity,
 }
-
-#[derive(Component)]
-struct WallDot;
 
 #[derive(Component)]
 struct FadeDot {
@@ -61,9 +63,10 @@ impl FadeDot {
 #[derive(Resource, Default)]
 struct LidarNextUseTime(f32);
 
-fn position_dots_ready(
+fn spawn_dots(
     mut commands: Commands,
     player_query: Query<&Transform, (With<Player>, Without<LidarDot>)>,
+    level_parent_query: Query<Entity, With<LevelParent>>,
     key_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     mut lidar_next_use_time: ResMut<LidarNextUseTime>,
@@ -80,26 +83,29 @@ fn position_dots_ready(
 
     let step = (std::f32::consts::PI * 2.0) / (LIDAR_DOTS_COUNT as f32);
 
-    let batch = (0..LIDAR_DOTS_COUNT).into_iter().map(move |i| {
-        let angle = i as f32 * step;
-        let direction = Vec2::from_angle(angle);
+    let parent_entity = level_parent_query.single().unwrap();
 
-        (
-            LidarDot {
-                direction,
-                last_entity_hit: Entity::PLACEHOLDER,
-            },
-            Sprite::from_image(lidar_dot_sprite.clone()),
-            Transform {
-                translation: player_translation_lidar_dot_z,
-                scale: Vec3::splat(0.5),
-                ..default()
-            },
-            FadeDot::new_alpha(LIDAR_DOT_ALIVE_TIME, css::RED),
-        )
+    commands.entity(parent_entity).with_children(move |parent| {
+        for i in 0..LIDAR_DOTS_COUNT {
+            let angle = i as f32 * step;
+            let direction = Vec2::from_angle(angle);
+
+            parent.spawn((
+                LidarDot {
+                    direction,
+                    last_entity_hit: Entity::PLACEHOLDER,
+                },
+                Sprite::from_image(lidar_dot_sprite.clone()),
+                Transform {
+                    translation: player_translation_lidar_dot_z,
+                    scale: Vec3::splat(0.5),
+                    ..default()
+                },
+                FadeDot::new_alpha(LIDAR_DOT_ALIVE_TIME, css::RED),
+            ));
+        }
     });
 
-    commands.spawn_batch(batch);
     lidar_next_use_time.0 = time.elapsed_secs() + LIDAR_COOLDOWN;
 }
 
@@ -108,6 +114,7 @@ fn move_dots(
     mut dot_query: Query<(&mut LidarDot, &mut FadeDot, &mut Transform)>,
     player_query: Query<Entity, With<Player>>,
     target_query: Query<Entity, With<GameTarget>>,
+    level_parent_query: Query<Entity, With<LevelParent>>,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
     rapier_context: ReadRapierContext,
@@ -158,7 +165,9 @@ fn move_dots(
             FadeDot::new_alpha(WALL_DOT_ALIVE_TIME, Color::WHITE)
         };
 
-        commands.spawn((
+        let level_parent = level_parent_query.single().unwrap();
+
+        commands.entity(level_parent).with_child((
             wall_fade_dot,
             Sprite::from_image(asset_server.load("image/particle/lidar_dot.png")),
             *dot_transform,

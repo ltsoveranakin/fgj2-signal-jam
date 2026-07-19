@@ -1,3 +1,4 @@
+use crate::control::story_board_shown;
 use crate::game::maze::LevelReadyMessage;
 use bevy::prelude::*;
 use std::ops::RangeInclusive;
@@ -15,7 +16,7 @@ impl Plugin for StoryPlugin {
                 Update,
                 (
                     show_story_board_on_ready,
-                    advance_story_board,
+                    (click_story_board, enter_story_board).run_if(story_board_shown),
                     update_story_board,
                 ),
             );
@@ -23,8 +24,18 @@ impl Plugin for StoryPlugin {
 }
 
 #[derive(Component)]
-pub(super) struct StoryBoard {
+pub(crate) struct StoryBoard {
     board_range: Option<BoardRange>,
+}
+
+impl StoryBoard {
+    fn advance(&mut self) {
+        if let Some(board_range) = &mut self.board_range {
+            board_range.current_index += 1;
+        } else {
+            return;
+        };
+    }
 }
 
 #[derive(Debug)]
@@ -114,16 +125,22 @@ fn update_story_board(
     }
 }
 
-fn advance_story_board(
+fn click_story_board(
     mut story_board_query: Query<(&mut StoryBoard, &Interaction), Changed<Interaction>>,
 ) {
     for (mut story_board, interaction) in story_board_query.iter_mut() {
         if *interaction == Interaction::Pressed {
-            if let Some(board_range) = &mut story_board.board_range {
-                board_range.current_index += 1;
-            } else {
-                return;
-            };
+            story_board.advance();
         }
+    }
+}
+
+fn enter_story_board(
+    mut board_query: Query<&mut StoryBoard>,
+    key_input: Res<ButtonInput<KeyCode>>,
+) {
+    if key_input.just_pressed(KeyCode::Enter) {
+        let mut story_board = board_query.single_mut().unwrap();
+        story_board.advance();
     }
 }

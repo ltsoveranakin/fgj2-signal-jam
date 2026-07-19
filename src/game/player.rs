@@ -1,6 +1,10 @@
+use crate::control::inputs_allowed;
+use crate::game::level::create_level::{NextLevelSensor, UnlockingBorder};
+use crate::game::level::{NextLevelMessage, UnlockLevelMessage};
 use crate::game::maze::LevelReadyMessage;
 use crate::game::maze::generator::TILE_SIZE_U32;
 use crate::game::story::StoryBoard;
+use crate::game::target::GameTarget;
 use crate::game::z_coord::PLAYER_Z_COORD;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
@@ -11,8 +15,15 @@ pub(super) struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_player)
-            .add_systems(Update, (place_player_in_maze, move_player));
+        app.add_systems(Startup, spawn_player).add_systems(
+            Update,
+            (
+                place_player_in_maze,
+                move_player.run_if(inputs_allowed),
+                player_touch_level_progress,
+                player_touch_target,
+            ),
+        );
     }
 }
 
@@ -34,6 +45,7 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         LockedAxes::ROTATION_LOCKED,
         Velocity::zero(),
         GravityScale(0.0),
+        ActiveEvents::COLLISION_EVENTS,
         Name::new("Player"),
     ));
 }
@@ -87,5 +99,69 @@ fn place_player_in_maze(
             .extend(player_transform.translation.z);
 
         *player_visibility = Visibility::Visible;
+    }
+}
+
+fn player_touch_level_progress(
+    player_marker_query: Query<(), With<Player>>,
+    level_end_marker_query: Query<(), With<NextLevelSensor>>,
+    mut collision_event: MessageReader<CollisionEvent>,
+    mut next_level_message: MessageWriter<NextLevelMessage>,
+) {
+    for collision in collision_event.read() {
+        match collision {
+            CollisionEvent::Started(entity_1, entity_2, _flags) => {
+                if let Some((_, _)) = match_colliders(
+                    *entity_1,
+                    *entity_2,
+                    &player_marker_query,
+                    &level_end_marker_query,
+                ) {
+                    next_level_message.write_default();
+                }
+            }
+
+            CollisionEvent::Stopped(..) => {}
+        }
+    }
+}
+
+fn player_touch_target(
+    player_marker_query: Query<(), With<Player>>,
+    target_marker_query: Query<(), With<GameTarget>>,
+    mut collision_event: MessageReader<CollisionEvent>,
+    mut unlock_level_message: MessageWriter<UnlockLevelMessage>,
+) {
+    for collision in collision_event.read() {
+        match collision {
+            CollisionEvent::Started(entity_1, entity_2, _flags) => {
+                if let Some((_, _)) = match_colliders(
+                    *entity_1,
+                    *entity_2,
+                    &player_marker_query,
+                    &target_marker_query,
+                ) {
+                    info!("touch targ");
+                    unlock_level_message.write_default();
+                }
+            }
+
+            CollisionEvent::Stopped(..) => {}
+        }
+    }
+}
+
+fn match_colliders<'w, 's>(
+    entity1: Entity,
+    entity2: Entity,
+    query1: &'w Query<'w, 's, (), With<impl Component>>,
+    query2: &'w Query<'w, 's, (), With<impl Component>>,
+) -> Option<(Entity, Entity)> {
+    if query1.get(entity1).is_ok() && query2.get(entity2).is_ok() {
+        Some((entity1, entity2))
+    } else if query1.get(entity2).is_ok() && query2.get(entity1).is_ok() {
+        Some((entity1, entity2))
+    } else {
+        None
     }
 }

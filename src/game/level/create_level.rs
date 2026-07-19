@@ -1,4 +1,4 @@
-use crate::game::level::{LevelData, LevelsData, SetLevelMessage};
+use crate::game::level::{LevelData, LevelsData, SetLevelMessage, WallType};
 use crate::game::maze::LevelReadyMessage;
 use crate::game::maze::generator::{HALF_TILE_SIZE_F32, TILE_SIZE_F32};
 use bevy::prelude::*;
@@ -9,107 +9,138 @@ pub(super) struct CreateLevelPlugin;
 
 impl Plugin for CreateLevelPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_level_parent)
-            .add_systems(Update, create_level_on_set);
+        app.add_systems(Update, create_level);
     }
 }
 
 #[derive(Component)]
-struct LevelParent;
+pub(crate) struct LevelParent;
 
-fn spawn_level_parent(mut commands: Commands) {
-    commands.spawn((LevelParent, Transform::default(), Name::new("Level")));
-}
+#[derive(Component)]
+pub(crate) struct UnlockingBorder;
 
-fn create_level_on_set(
+#[derive(Component)]
+pub(crate) struct NextLevelSensor;
+
+fn create_level(
     mut commands: Commands,
+    level_parent_query: Query<Entity, With<LevelParent>>,
     levels_data: Res<LevelsData>,
     level_assets: ResMut<Assets<LevelData>>,
     mut set_level_message: MessageReader<SetLevelMessage>,
     mut level_ready_message: MessageWriter<LevelReadyMessage>,
 ) {
     for set_level in set_level_message.read() {
-        let level_data_handle = &levels_data.levels[set_level.0];
+        for old_parent_entity in level_parent_query.iter() {
+            commands.entity(old_parent_entity).despawn();
+        }
 
-        let level_data = level_assets.get(level_data_handle).unwrap();
+        commands
+            .spawn((Transform::default(), Visibility::Visible, LevelParent))
+            .with_children(|parent| {
+                let level_data_handle = &levels_data.levels[set_level.0];
 
-        let LevelData {
-            player_spawn,
-            target_spawn,
-            level_size,
-            walls,
-            story,
-        } = level_data;
+                let level_data = level_assets.get(level_data_handle).unwrap();
 
-        #[cfg(debug_assertions)]
-        let mut collider_positions =
-            HashMap::with_capacity(((level_size.x * 2) + (level_size.y * 2)) as usize);
+                let LevelData {
+                    player_spawn,
+                    target_spawn,
+                    level_size,
+                    walls,
+                    story,
+                    exit,
+                } = level_data;
 
-        #[cfg(debug_assertions)]
-        let mut set_collider = |map_coord: IVec2| {
-            assert!(!collider_positions.contains_key(&map_coord));
+                #[cfg(debug_assertions)]
+                let mut collider_positions =
+                    HashMap::with_capacity(((level_size.x * 2) + (level_size.y * 2)) as usize);
 
-            collider_positions.insert(map_coord, true);
-        };
+                #[cfg(debug_assertions)]
+                let mut set_collider = |map_coord: IVec2| {
+                    assert!(
+                        !collider_positions.contains_key(&map_coord),
+                        "collider at {}",
+                        map_coord
+                    );
 
-        for wall in walls {
-            let wall_coord = UVec2::new(wall.x, wall.y);
+                    collider_positions.insert(map_coord, true);
+                };
 
-            for x in 0..wall.width {
-                for y in 0..wall.height {
-                    let cell_coord = UVec2::new(x, y);
+                for wall in walls {
+                    let wall_coord = UVec2::new(wall.x, wall.y);
 
-                    let map_coord = wall_coord + cell_coord;
+                    for x in 0..wall.width {
+                        for y in 0..wall.height {
+                            let cell_coord = UVec2::new(x, y);
 
-                    commands.spawn(collision_box(map_coord.as_ivec2()));
+                            let map_coord = wall_coord + cell_coord;
 
-                    #[cfg(debug_assertions)]
-                    set_collider(map_coord.as_ivec2());
+                            parent.spawn(collision_box(
+                                map_coord.as_ivec2(),
+                                "Inner Wall Segment",
+                                wall.wall_type,
+                            ));
+
+                            #[cfg(debug_assertions)]
+                            set_collider(map_coord.as_ivec2());
+                        }
+                    }
                 }
-            }
-        }
 
-        for x in -1..=(level_size.x as i32) {
-            let top_border = IVec2::new(x, level_size.y as i32);
-            let bottom_border = IVec2::new(x, -1);
+                //TODO: optimize. this horrible
 
-            #[cfg(debug_assertions)]
-            {
-                set_collider(top_border);
-                set_collider(bottom_border);
-            }
+                for x in -1..=level_size.x as i32 {
+                    for y in -1..=level_size.y as i32 {
+                        if x == -1
+                            || x == (level_size.x as i32)
+                            || y == -1
+                            || y == (level_size.y as i32)
+                        {
+                            let border = IVec2::new(x, y);
 
-            commands.spawn(collision_box(top_border));
-            commands.spawn(collision_box(bottom_border));
-        }
+                            #[cfg(debug_assertions)]
+                            set_collider(border);
 
-        for y in 0..(level_size.y as i32) {
-            let left_border = IVec2::new(-1, y);
-            let right_border = IVec2::new(level_size.x as i32, y);
+                            let mut entity_commands = parent.spawn(collision_box(
+                                border,
+                                "Outer Wall Segment",
+                                WallType::Solid,
+                            ));
 
-            #[cfg(debug_assertions)]
-            {
-                set_collider(left_border);
-                set_collider(right_border);
-            }
+                            if border == *exit {
+                                entity_commands.insert(UnlockingBorder);
 
-            commands.spawn(collision_box(left_border));
-            commands.spawn(collision_box(right_border));
-        }
+                                let offset = if border.x.abs() > border.y.abs() {
+                                    IVec2::new(border.x.signum(), 0)
+                                } else {
+                                    IVec2::new(0, border.y.signum())
+                                };
 
-        level_ready_message.write(LevelReadyMessage {
-            player: player_spawn.as_usizevec2(),
-            target: target_spawn.as_usizevec2(),
-            story_index_range: Some(story.clone()),
-        });
+                                parent.spawn(collision_box(
+                                    border + offset,
+                                    "Next Level Sensor",
+                                    (WallType::Solid, NextLevelSensor, Sensor),
+                                ));
+                            }
+                        }
+                    }
+                }
+
+                level_ready_message.write(LevelReadyMessage {
+                    player: player_spawn.as_usizevec2(),
+                    target: target_spawn.as_usizevec2(),
+                    story_index_range: story.clone(),
+                });
+            });
     }
 }
 
-fn collision_box(map_coord: IVec2) -> impl Bundle {
+fn collision_box(map_coord: IVec2, name: &str, addl: impl Bundle) -> impl Bundle {
     (
         Transform::from_translation(map_coord.as_vec2().extend(0.0) * TILE_SIZE_F32),
         Collider::cuboid(HALF_TILE_SIZE_F32, HALF_TILE_SIZE_F32),
         RigidBody::Fixed,
-        Name::new("Wall Segment"),
+        Name::new(name.to_string()),
+        addl,
     )
 }

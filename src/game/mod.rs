@@ -3,7 +3,7 @@ mod level;
 pub(super) mod lidar;
 mod maze;
 mod player;
-mod story;
+pub(crate) mod story;
 mod target;
 mod z_coord;
 

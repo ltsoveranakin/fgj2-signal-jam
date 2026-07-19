@@ -23,7 +23,7 @@ fn spawn_startup_target(mut commands: Commands, asset_server: Res<AssetServer>) 
         GameTarget,
         Sprite::from_image(target_image),
         Visibility::Hidden,
-        Transform::from_xyz(0.0, 0.0, TARGET_Z_COORD),
+        Transform::from_xyz(1000.0, 1000.0, TARGET_Z_COORD),
         Collider::capsule_x(6.0, 3.0),
         Sensor,
     ));
