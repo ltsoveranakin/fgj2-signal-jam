@@ -55,10 +55,10 @@ struct WallData {
     wall_type: WallType,
 }
 
-#[derive(Deserialize, Component, Copy, Clone, Debug)]
-enum WallType {
+#[derive(Component, Deserialize, Copy, Clone, Debug)]
+pub(super) enum WallType {
     Solid,
-    Hole,
+    Absorb,
 }
 
 #[derive(Message, Default)]

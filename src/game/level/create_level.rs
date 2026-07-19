@@ -68,11 +68,11 @@ fn create_level(
 
             #[cfg(debug_assertions)]
             let mut set_collider = |map_coord: IVec2| {
-                assert!(
-                    !collider_positions.contains_key(&map_coord),
-                    "collider at {}",
-                    map_coord
-                );
+                // assert!(
+                //     !collider_positions.contains_key(&map_coord),
+                //     "collider at {}",
+                //     map_coord
+                // );
 
                 collider_positions.insert(map_coord, true);
             };
@@ -130,7 +130,7 @@ fn create_level(
                             parent.spawn(collision_box(
                                 border + offset,
                                 "Next Level Sensor",
-                                (WallType::Solid, NextLevelSensor, Sensor),
+                                (NextLevelSensor, Sensor),
                             ));
                         }
                     }

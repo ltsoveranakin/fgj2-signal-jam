@@ -1,5 +1,6 @@
 use crate::assign_vec::AssignVec;
 use crate::control::inputs_allowed;
+use crate::game::level::WallType;
 use crate::game::level::create_level::LevelParent;
 use crate::game::player::Player;
 use crate::game::target::GameTarget;
@@ -111,9 +112,10 @@ fn spawn_dots(
 
 fn move_dots(
     mut commands: Commands,
-    mut dot_query: Query<(&mut LidarDot, &mut FadeDot, &mut Transform)>,
+    mut dot_query: Query<(Entity, &mut LidarDot, &mut FadeDot, &mut Transform)>,
     player_query: Query<Entity, With<Player>>,
     target_query: Query<Entity, With<GameTarget>>,
+    wall_type_query: Query<&WallType>,
     level_parent_query: Query<Entity, With<LevelParent>>,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
@@ -125,7 +127,7 @@ fn move_dots(
 
     let toi: bevy_rapier2d::prelude::Real = LIDAR_DOT_SPEED * time.delta_secs();
 
-    for (mut lidar_dot, mut fade_dot, mut dot_transform) in dot_query.iter_mut() {
+    for (dot_entity, mut lidar_dot, mut fade_dot, mut dot_transform) in dot_query.iter_mut() {
         let current_dot_position = dot_transform.translation.truncate();
 
         let solid = true;
@@ -156,6 +158,14 @@ fn move_dots(
                 .assign_from(current_dot_position + (lidar_dot.direction * toi));
             continue;
         };
+
+        if let Ok(wall_type) = wall_type_query.get(entity_hit) {
+            if matches!(wall_type, WallType::Absorb) {
+                commands.entity(dot_entity).remove::<LidarDot>();
+                *fade_dot = FadeDot::new_alpha(1.0, css::TEAL);
+                continue;
+            }
+        }
 
         dot_transform.translation.assign_from(hit_result.point);
 
