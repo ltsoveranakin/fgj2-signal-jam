@@ -58,6 +58,7 @@ fn create_level(
                 walls,
                 story,
                 exit,
+                absorb_boundary,
             } = level_data;
 
             #[cfg(debug_assertions)]
@@ -96,6 +97,12 @@ fn create_level(
                 }
             }
 
+            let border_type = if absorb_boundary.is_some_and(|absorb| absorb) {
+                WallType::Absorb
+            } else {
+                WallType::Solid
+            };
+
             //TODO: optimize. this horrible
 
             for x in -1..=level_size.x as i32 {
@@ -110,11 +117,8 @@ fn create_level(
                         #[cfg(debug_assertions)]
                         set_collider(border);
 
-                        let mut entity_commands = parent.spawn(collision_box(
-                            border,
-                            "Outer Wall Segment",
-                            WallType::Solid,
-                        ));
+                        let mut entity_commands =
+                            parent.spawn(collision_box(border, "Outer Wall Segment", border_type));
 
                         if border == *exit {
                             entity_commands.insert(UnlockingBorder);

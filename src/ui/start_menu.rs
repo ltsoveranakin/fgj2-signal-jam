@@ -69,13 +69,13 @@ fn spawn_ui_elements(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             children![
                 (
-                    Text::new("Signal Game"),
+                    Text::new("RELAY"),
                     TextColor::from(css::AZURE),
                     TextShadow {
                         offset: Vec2::splat(1.0),
                         color: css::GREY.into()
                     },
-                    TextFont::from_font_size(FontSize::Rem(2.0))
+                    TextFont::from_font_size(FontSize::Rem(2.4))
                 ),
                 button("Play", Display::Flex, PlayButton),
                 button("Maze", Display::None, MazeButton),

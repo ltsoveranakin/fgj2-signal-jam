@@ -1,6 +1,6 @@
 use crate::control::inputs_allowed;
 use crate::game::level::create_level::NextLevelSensor;
-use crate::game::level::{CurrentLevel, HALF_TILE_SIZE_F32, LevelReadyMessage, TILE_SIZE_U32};
+use crate::game::level::{CurrentLevel, LevelReadyMessage, TILE_SIZE_F32, TILE_SIZE_U32};
 
 use crate::game::z_coord::PLAYER_Z_COORD;
 use crate::sprite_sheet::player_rect_from_sheet;
@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 const PLAYER_SPEED: f32 = 75.0;
-pub(super) const PLAYER_INTERACT_RANGE: f32 = HALF_TILE_SIZE_F32;
+pub(super) const PLAYER_INTERACT_RANGE: f32 = TILE_SIZE_F32;
 
 pub(super) struct PlayerPlugin;
 

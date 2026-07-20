@@ -149,6 +149,7 @@ fn interact_with_target(
             fov: PI * 2.0,
             direction: 0.0,
             dot_count: 100,
+            alive_time: 30.0,
         });
     }
 }

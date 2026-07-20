@@ -10,7 +10,7 @@ use bevy_rapier2d::prelude::*;
 use serde::Deserialize;
 use std::ops::RangeInclusive;
 
-const LEVEL_COUNT: usize = 2;
+const LEVEL_COUNT: usize = 4;
 
 pub(crate) const TILE_SIZE_U32: u32 = 16;
 pub(crate) const TILE_SIZE_F32: f32 = TILE_SIZE_U32 as f32;
@@ -59,6 +59,7 @@ pub(crate) struct LevelData {
     walls: Vec<WallData>,
     story: Option<RangeInclusive<usize>>,
     exit: IVec2,
+    absorb_boundary: Option<bool>,
 }
 
 #[derive(Deserialize, Debug)]

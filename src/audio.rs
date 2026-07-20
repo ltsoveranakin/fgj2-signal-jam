@@ -81,6 +81,6 @@ fn play_music_on_game_play(mut commands: Commands, asset_server: Res<AssetServer
         MainGameMusic,
         AudioPlayer::new(asset_server.load("audio/music/sector.ogg")),
         PlaybackSettings::LOOP,
-        FadeAudio::fade_in(1.0),
+        FadeAudio::fade_in(1.5),
     ));
 }
