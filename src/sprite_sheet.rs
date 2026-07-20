@@ -14,7 +14,7 @@ fn image_rect_from_sheet(
 
 pub(super) fn default_sheet(index: usize, sprite_dimensions: Vec2) -> Rect {
     const PADDING: f32 = 1.0;
-    const OFFSET: Vec2 = Vec2::new(1.0, 1.0);
+    const OFFSET: Vec2 = Vec2::splat(1.0);
 
     image_rect_from_sheet(index, sprite_dimensions, PADDING, OFFSET)
 }
@@ -26,7 +26,13 @@ pub(super) fn story_board_rect_from_sheet(index: usize) -> Rect {
 }
 
 pub(super) fn story_panel_rect_from_sheet(index: usize) -> Rect {
-    const PANEL_DIM: Vec2 = Vec2::new(512.0, 512.0);
+    const PANEL_DIM: Vec2 = Vec2::splat(512.0);
+
+    default_sheet(index, PANEL_DIM)
+}
+
+pub(super) fn player_rect_from_sheet(index: usize) -> Rect {
+    const PANEL_DIM: Vec2 = Vec2::splat(64.0);
 
     default_sheet(index, PANEL_DIM)
 }

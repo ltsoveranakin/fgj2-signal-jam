@@ -2,8 +2,8 @@ use crate::control::inputs_allowed;
 use crate::game::level::create_level::NextLevelSensor;
 use crate::game::level::{CurrentLevel, HALF_TILE_SIZE_F32, LevelReadyMessage, TILE_SIZE_U32};
 
-use crate::game::story_board::StoryBoard;
 use crate::game::z_coord::PLAYER_Z_COORD;
+use crate::sprite_sheet::player_rect_from_sheet;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
@@ -37,15 +37,25 @@ pub(super) enum PlayerFacing {
 }
 
 impl PlayerFacing {
-    pub(super) fn direction(&self) -> f32 {
+    pub(super) fn direction(&self) -> Vec2 {
         match self {
-            Self::Up => Vec2::new(0.0, 1.0).to_angle(),
+            Self::Up => Vec2::new(0.0, 1.0),
 
-            Self::Down => Vec2::new(0.0, -1.0).to_angle(),
+            Self::Down => Vec2::new(0.0, -1.0),
 
-            Self::Left => Vec2::new(-1.0, 0.0).to_angle(),
+            Self::Left => Vec2::new(-1.0, 0.0),
 
-            Self::Right => Vec2::new(1.0, 0.0).to_angle(),
+            Self::Right => Vec2::new(1.0, 0.0),
+        }
+    }
+
+    /// Returns the sprite index and if the sprite should be flipped horizontally
+    fn get_sprite(&self) -> (bool, usize) {
+        match self {
+            Self::Up => (false, 1),
+            Self::Down => (false, 2),
+            Self::Left => (false, 0),
+            Self::Right => (true, 0),
         }
     }
 }
@@ -59,7 +69,11 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
             scale: Vec3::splat(0.3),
             ..default()
         },
-        Sprite::from_image(asset_server.load("image/character/player.png")),
+        Sprite {
+            image: asset_server.load("image/character/player.png"),
+            rect: Some(player_rect_from_sheet(0)),
+            ..default()
+        },
         Visibility::Hidden,
         Collider::ball(4.0),
         RigidBody::Dynamic,
@@ -72,17 +86,12 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn move_player(
-    mut player_query: Query<(&mut Velocity, &mut PlayerFacing)>,
-    story_board_query: Query<&Node, With<StoryBoard>>,
+    mut player_query: Query<(&mut Velocity, &mut PlayerFacing, &mut Sprite)>,
+
     key_input: Res<ButtonInput<KeyCode>>,
 ) {
-    let story_board_node = story_board_query.single().unwrap();
-
-    if story_board_node.display == Display::Flex {
-        return;
-    }
-
-    let (mut player_velocity, mut player_facing) = player_query.single_mut().unwrap();
+    let (mut player_velocity, mut player_facing, mut player_sprite) =
+        player_query.single_mut().unwrap();
     let mut move_dir = Vec2::ZERO;
 
     if key_input.pressed(KeyCode::KeyW) || key_input.pressed(KeyCode::ArrowUp) {
@@ -104,6 +113,11 @@ fn move_player(
         move_dir.x -= 1.0;
         *player_facing = PlayerFacing::Left;
     }
+
+    let (flip_x, sprite_index) = player_facing.get_sprite();
+
+    player_sprite.rect = Some(player_rect_from_sheet(sprite_index));
+    player_sprite.flip_x = flip_x;
 
     if move_dir != Vec2::ZERO {
         move_dir = move_dir.normalize() * PLAYER_SPEED;

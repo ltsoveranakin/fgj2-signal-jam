@@ -1,4 +1,4 @@
 TODO:
 Player sprites
-Music
 Levels
+Dialog for levels

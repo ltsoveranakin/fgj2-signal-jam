@@ -92,7 +92,8 @@ fn spawn_dots(
 
     commands.entity(parent_entity).with_children(move |parent| {
         for i in 0..LIDAR_DOTS_COUNT {
-            let angle = (i as f32 * step) + (LIDAR_CONE * -0.5) + player_facing.direction();
+            let angle =
+                (i as f32 * step) + (LIDAR_CONE * -0.5) + player_facing.direction().to_angle();
             let direction = Vec2::from_angle(angle);
 
             parent.spawn((
