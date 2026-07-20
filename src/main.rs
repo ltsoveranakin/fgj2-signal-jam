@@ -17,7 +17,7 @@ use bevy_rapier2d::prelude::*;
 fn main() {
     let mut app = App::new();
 
-    app.add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest())) // def plugins
+    app.add_plugins((DefaultPlugins.set(ImagePlugin::default_nearest()),)) // default plugins
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default()) // lib plugins
         .add_plugins(DebugPlugin) // dbg tgl plugin
         .add_plugins((GamePlugin, GameUIPlugin, ControlPlugin, GameAudioPlugin)); // main game plugins

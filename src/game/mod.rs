@@ -2,6 +2,7 @@ mod camera;
 pub(super) mod level;
 pub(super) mod lidar;
 
+mod glow;
 mod player;
 pub(super) mod story_board;
 mod target;
@@ -11,6 +12,7 @@ use crate::game::camera::GameCameraPlugin;
 use crate::game::level::LevelPlugin;
 use crate::game::lidar::LidarPlugin;
 
+use crate::game::glow::GlowPlugin;
 use crate::game::player::PlayerPlugin;
 use crate::game::story_board::StoryBoardPlugin;
 use crate::game::target::TargetPlugin;
@@ -28,6 +30,7 @@ impl Plugin for GamePlugin {
             TargetPlugin,
             LevelPlugin,
             StoryBoardPlugin,
+            GlowPlugin,
         ));
     }
 }

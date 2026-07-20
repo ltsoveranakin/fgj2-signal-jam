@@ -128,7 +128,7 @@ fn create_level(
                             parent.spawn(collision_box(
                                 border + offset,
                                 "Next Level Sensor",
-                                (NextLevelSensor, Sensor),
+                                (WallType::Exit, NextLevelSensor, Sensor),
                             ));
                         }
                     }

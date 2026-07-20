@@ -17,17 +17,24 @@ const LIDAR_CONE: f32 = PI / 3.0;
 const WALL_DOT_ALIVE_TIME: f32 = 10.0;
 const LIDAR_DOT_ALIVE_TIME: f32 = 10.0;
 const BOUNCE_ALIVE_TIME_PENALTY: f32 = 0.3;
-const LIDAR_COOLDOWN: f32 = 10.0;
+const LIDAR_COOLDOWN: f32 = 6.0;
 
 pub(super) struct LidarDotsPlugin;
 
 impl Plugin for LidarDotsPlugin {
     fn build(&self, app: &mut App) {
+        app.add_message::<SpawnDotsMessage>();
+
         app.init_resource::<LidarNextUseTime>();
 
         app.add_systems(
             Update,
-            (spawn_dots.run_if(inputs_allowed), move_dots, fade_wall_dots),
+            (
+                shoot_lidar.run_if(inputs_allowed),
+                spawn_dots,
+                move_dots,
+                fade_wall_dots,
+            ),
         );
     }
 }
@@ -66,50 +73,72 @@ impl FadeDot {
 #[derive(Resource, Default)]
 pub(crate) struct LidarNextUseTime(pub(crate) f32);
 
+#[derive(Message)]
+pub(crate) struct SpawnDotsMessage {
+    pub(crate) location: Vec2,
+    pub(crate) fov: f32,
+    pub(crate) direction: f32,
+    pub(crate) dot_count: usize,
+}
+
 fn spawn_dots(
     mut commands: Commands,
-    player_query: Query<(&Transform, &PlayerFacing)>,
     level_parent_query: Query<Entity, With<LevelParent>>,
+    asset_server: Res<AssetServer>,
+    mut lidar_dot_sprite_cache: Local<Option<Handle<Image>>>,
+    mut spawn_dots_message: MessageReader<SpawnDotsMessage>,
+) {
+    for spawn_dot in spawn_dots_message.read() {
+        let lidar_dot_sprite = lidar_dot_sprite_cache
+            .get_or_insert_with(|| asset_server.load("image/particle/lidar_dot.png"));
+
+        let translation = spawn_dot.location.extend(LIDAR_DOT_Z_COORD);
+
+        let step = (spawn_dot.fov) / (spawn_dot.dot_count as f32);
+
+        let parent_entity = level_parent_query.single().unwrap();
+
+        commands.entity(parent_entity).with_children(move |parent| {
+            for i in 0..spawn_dot.dot_count {
+                let angle = (i as f32 * step) + (spawn_dot.fov * -0.5) + spawn_dot.direction;
+                let direction = Vec2::from_angle(angle);
+
+                parent.spawn((
+                    LidarDot {
+                        direction,
+                        last_entity_hit: Entity::PLACEHOLDER,
+                    },
+                    Sprite::from_image(lidar_dot_sprite.clone()),
+                    Transform {
+                        translation,
+                        scale: Vec3::splat(0.5),
+                        ..default()
+                    },
+                    FadeDot::new_alpha(LIDAR_DOT_ALIVE_TIME, css::RED),
+                ));
+            }
+        });
+    }
+}
+
+fn shoot_lidar(
+    player_query: Query<(&Transform, &PlayerFacing)>,
+    mut lidar_next_use_time: ResMut<LidarNextUseTime>,
     key_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    mut lidar_next_use_time: ResMut<LidarNextUseTime>,
-    asset_server: Res<AssetServer>,
+    mut spawn_dots_message: MessageWriter<SpawnDotsMessage>,
 ) {
     if !key_input.just_pressed(KeyCode::Space) || time.elapsed_secs() <= lidar_next_use_time.0 {
         return;
     }
 
-    let lidar_dot_sprite = asset_server.load("image/particle/lidar_dot.png");
+    let (transform, facing) = player_query.single().unwrap();
 
-    let (player_transform, player_facing) = player_query.single().unwrap();
-
-    let mut player_translation_lidar_dot_z = player_transform.translation;
-    player_translation_lidar_dot_z.z = LIDAR_DOT_Z_COORD;
-
-    let step = (LIDAR_CONE) / (LIDAR_DOTS_COUNT as f32);
-
-    let parent_entity = level_parent_query.single().unwrap();
-
-    commands.entity(parent_entity).with_children(move |parent| {
-        for i in 0..LIDAR_DOTS_COUNT {
-            let angle =
-                (i as f32 * step) + (LIDAR_CONE * -0.5) + player_facing.direction().to_angle();
-            let direction = Vec2::from_angle(angle);
-
-            parent.spawn((
-                LidarDot {
-                    direction,
-                    last_entity_hit: Entity::PLACEHOLDER,
-                },
-                Sprite::from_image(lidar_dot_sprite.clone()),
-                Transform {
-                    translation: player_translation_lidar_dot_z,
-                    scale: Vec3::splat(0.5),
-                    ..default()
-                },
-                FadeDot::new_alpha(LIDAR_DOT_ALIVE_TIME, css::RED),
-            ));
-        }
+    spawn_dots_message.write(SpawnDotsMessage {
+        location: transform.translation.truncate(),
+        fov: LIDAR_CONE,
+        direction: facing.direction().to_angle(),
+        dot_count: LIDAR_DOTS_COUNT,
     });
 
     lidar_next_use_time.0 = time.elapsed_secs() + LIDAR_COOLDOWN;
@@ -119,7 +148,7 @@ fn move_dots(
     mut commands: Commands,
     mut dot_query: Query<(Entity, &mut LidarDot, &mut FadeDot, &mut Transform)>,
     player_query: Query<Entity, With<Player>>,
-    target_query: Query<Entity, With<GameTarget>>,
+    target_query: Query<(Entity, &GameTarget)>,
     wall_type_query: Query<&WallType>,
     level_parent_query: Query<Entity, With<LevelParent>>,
     time: Res<Time>,
@@ -128,7 +157,7 @@ fn move_dots(
     rapier_context: ReadRapierContext,
 ) {
     let player_entity = player_query.single().unwrap();
-    let target_entity = target_query.single().unwrap();
+    let (target_entity, target) = target_query.single().unwrap();
     let rapier_context = rapier_context.single().unwrap();
 
     let toi: bevy_rapier2d::prelude::Real = LIDAR_DOT_SPEED * time.delta_secs();
@@ -138,12 +167,15 @@ fn move_dots(
 
         let solid = true;
         let predicate = |entity| {
-            if lidar_dot.last_entity_hit == entity {
+            if (entity == lidar_dot.last_entity_hit)
+                || (target.is_active && entity == target_entity)
+            {
                 false
             } else {
                 true
             }
         };
+
         let query = QueryFilter::new()
             .exclude_collider(player_entity)
             .predicate(&predicate);
@@ -170,13 +202,21 @@ fn move_dots(
         let mut absorbed = None;
 
         if let Ok(wall_type) = wall_type_query.get(entity_hit) {
-            if matches!(wall_type, WallType::Absorb) {
-                absorbed = Some(FadeDot::new_alpha(1.0, css::TEAL));
+            match wall_type {
+                WallType::Absorb => {
+                    absorbed = Some(FadeDot::new_alpha(1.0, css::TEAL));
+                }
+
+                WallType::Exit => {
+                    absorbed = Some(FadeDot::new_alpha(10.0, css::GREEN));
+                }
+
+                WallType::Solid => {}
             }
         }
 
         if entity_hit == target_entity {
-            absorbed = Some(FadeDot::new_alpha(1.0, css::GREEN));
+            absorbed = Some(FadeDot::new_alpha(1.5, css::YELLOW));
             hit_target_message.write_default();
         }
 

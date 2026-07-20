@@ -1,5 +1,8 @@
 use crate::game::level::{LevelReadyMessage, TILE_SIZE_U32, UnlockLevelMessage};
+use std::f32::consts::PI;
 
+use crate::game::glow::Glow;
+use crate::game::lidar::dots::SpawnDotsMessage;
 use crate::game::player::{PLAYER_INTERACT_RANGE, Player};
 use crate::game::z_coord::TARGET_Z_COORD;
 use bevy::math::FloatPow;
@@ -23,6 +26,7 @@ impl Plugin for TargetPlugin {
                 hit_target,
                 fade_target,
                 interact_with_target,
+                update_target_state,
             ),
         );
     }
@@ -30,7 +34,8 @@ impl Plugin for TargetPlugin {
 
 #[derive(Component)]
 pub(super) struct GameTarget {
-    is_active: bool,
+    pub(super) is_active: bool,
+    pub(super) did_interact: bool,
 }
 
 #[derive(Message, Default)]
@@ -40,14 +45,21 @@ fn spawn_startup_target(mut commands: Commands, asset_server: Res<AssetServer>) 
     let target_image = asset_server.load("image/character/target.png");
 
     commands.spawn((
-        GameTarget { is_active: false },
+        GameTarget {
+            is_active: false,
+            did_interact: false,
+        },
         Sprite {
             image: target_image,
             color: Srgba::WHITE.with_alpha(0.0).into(),
             ..default()
         },
+        Glow {
+            is_glowing: false,
+            glow_color: LinearRgba::new(2.0, 4.0, 2.0, 1.0),
+        },
         Transform::from_xyz(1000.0, 1000.0, TARGET_Z_COORD),
-        Collider::capsule_x(3.0, 3.0),
+        Collider::capsule_x(2.5, 2.5),
         Sensor,
     ));
 }
@@ -85,16 +97,16 @@ fn hit_target(
 }
 
 fn fade_target(mut target_query: Query<(&mut GameTarget, &mut Sprite)>, time: Res<Time>) {
-    let (mut game_target, mut target_sprite) = target_query.single_mut().unwrap();
+    let (mut target, mut target_sprite) = target_query.single_mut().unwrap();
 
     let alpha = target_sprite.color.alpha();
     let alpha_delta_magnitude = time.delta_secs() * FADE_PER_SEC;
 
     if alpha >= FORCE_SHOW_ALPHA_THRESHOLD {
-        game_target.is_active = true;
+        target.is_active = true;
     }
 
-    let alpha_delta = if game_target.is_active {
+    let alpha_delta = if target.is_active {
         alpha_delta_magnitude
     } else {
         -alpha_delta_magnitude
@@ -107,15 +119,16 @@ fn fade_target(mut target_query: Query<(&mut GameTarget, &mut Sprite)>, time: Re
 
 fn interact_with_target(
     player_query: Query<&Transform, With<Player>>,
-    target_query: Query<(&GameTarget, &Transform), With<GameTarget>>,
+    mut target_query: Query<(&mut GameTarget, &Transform), With<GameTarget>>,
     key_input: Res<ButtonInput<KeyCode>>,
     mouse_input: Res<ButtonInput<MouseButton>>,
     mut unlock_level_message: MessageWriter<UnlockLevelMessage>,
+    mut spawn_dots_message: MessageWriter<SpawnDotsMessage>,
 ) {
     let player_transform = player_query.single().unwrap();
-    let (target, target_transform) = target_query.single().unwrap();
+    let (mut target, target_transform) = target_query.single_mut().unwrap();
 
-    if !target.is_active {
+    if !target.is_active || target.did_interact {
         return;
     }
 
@@ -129,5 +142,23 @@ fn interact_with_target(
         && (key_input.just_pressed(KeyCode::KeyE) || mouse_input.just_pressed(MouseButton::Left))
     {
         unlock_level_message.write_default();
+        target.did_interact = true;
+
+        spawn_dots_message.write(SpawnDotsMessage {
+            location: target_transform.translation.truncate(),
+            fov: PI * 2.0,
+            direction: 0.0,
+            dot_count: 100,
+        });
     }
+}
+
+fn update_target_state(mut target_query: Query<(&mut GameTarget, &mut Glow)>) {
+    let (mut target, mut glow) = target_query.single_mut().unwrap();
+
+    if !target.is_active {
+        target.did_interact = false;
+    }
+
+    glow.is_glowing = target.is_active;
 }

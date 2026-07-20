@@ -1,6 +1,8 @@
 use crate::debug::DebugModeEnabled;
 use crate::game::player::Player;
+use bevy::camera::Hdr;
 use bevy::input::mouse::MouseWheel;
+use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
 
 const CLEAR_COLOR: Color = Color::srgb_u8(9, 2, 20);
@@ -25,6 +27,8 @@ fn spawn_camera(mut commands: Commands) {
             clear_color: ClearColorConfig::Custom(CLEAR_COLOR),
             ..default()
         },
+        Bloom::default(),
+        Hdr,
         Projection::Orthographic(OrthographicProjection {
             scale: 0.2,
             ..OrthographicProjection::default_2d()

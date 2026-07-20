@@ -77,6 +77,7 @@ struct WallData {
 pub(super) enum WallType {
     Solid,
     Absorb,
+    Exit,
 }
 
 #[derive(Message, Default)]
