@@ -2,6 +2,7 @@ use crate::game::level::{
     CurrentLevel, HALF_TILE_SIZE_F32, LevelData, LevelReadyMessage, LevelsData, TILE_SIZE_F32,
     WallType,
 };
+use crate::game::lidar::dots::LidarNextUseTime;
 use crate::game::outro::GameFinished;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
@@ -31,8 +32,9 @@ fn create_level(
     mut commands: Commands,
     level_parent_query: Query<Entity, With<LevelParent>>,
     levels_data: Res<LevelsData>,
+    mut lidar_next_use_time: ResMut<LidarNextUseTime>,
     current_level: Res<CurrentLevel>,
-    level_assets: ResMut<Assets<LevelData>>,
+    level_assets: Res<Assets<LevelData>>,
     mut level_ready_message: MessageWriter<LevelReadyMessage>,
     mut game_finished: ResMut<GameFinished>,
 ) {
@@ -50,6 +52,8 @@ fn create_level(
         game_finished.is_finished = true;
         return;
     }
+
+    lidar_next_use_time.0 = 0.0;
 
     commands
         .spawn((Transform::default(), Visibility::Visible, LevelParent))

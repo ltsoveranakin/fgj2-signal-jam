@@ -1,4 +1,2 @@
 TODO:
-Levels
-
-ending
+ending (im bad at ending)

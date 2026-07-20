@@ -128,7 +128,7 @@ fn enter_story_board(
     mut board_query: Query<&mut StoryBoard>,
     key_input: Res<ButtonInput<KeyCode>>,
 ) {
-    if key_input.any_just_pressed([KeyCode::Enter, KeyCode::Space]) {
+    if key_input.any_just_pressed([KeyCode::Enter, KeyCode::Space, KeyCode::Escape]) {
         let mut story_board = board_query.single_mut().unwrap();
         story_board.advance();
     }

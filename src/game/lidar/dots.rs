@@ -120,7 +120,7 @@ fn spawn_dots(
                     Sprite::from_image(lidar_dot_sprite.clone()),
                     Transform {
                         translation,
-                        scale: Vec3::splat(0.5),
+                        scale: Vec3::splat(0.35),
                         ..default()
                     },
                     spawn_dots.fade,

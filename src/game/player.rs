@@ -71,7 +71,7 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         PlayerFacing::Right,
         Transform {
             translation: Vec3::new(0.0, 0.0, PLAYER_Z_COORD),
-            scale: Vec3::splat(0.3),
+            scale: Vec3::splat(0.2),
             ..default()
         },
         Sprite {
@@ -81,7 +81,7 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         },
         Visibility::Hidden,
-        Collider::ball(4.0),
+        Collider::capsule_y(10.0, 6.0),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
         Velocity::zero(),
@@ -137,17 +137,19 @@ fn reset_player_velocity(mut player_query: Query<&mut Velocity, With<Player>>) {
 }
 
 fn place_player_in_maze(
-    mut player_query: Query<(&mut Transform, &mut Visibility), With<Player>>,
+    mut player_query: Query<(&mut Transform, &mut Visibility, &mut PlayerFacing), With<Player>>,
     mut level_ready_message: MessageReader<LevelReadyMessage>,
 ) {
     for place_maze_objects in level_ready_message.read() {
-        let (mut player_transform, mut player_visibility) = player_query.single_mut().unwrap();
+        let (mut player_transform, mut player_visibility, mut facing) =
+            player_query.single_mut().unwrap();
 
         player_transform.translation = (place_maze_objects.player * (TILE_SIZE_U32 as usize))
             .as_vec2()
             .extend(player_transform.translation.z);
 
         *player_visibility = Visibility::Visible;
+        *facing = PlayerFacing::Right;
     }
 }
 

@@ -10,7 +10,7 @@ use bevy_rapier2d::prelude::*;
 use serde::Deserialize;
 use std::ops::RangeInclusive;
 
-const LEVEL_COUNT: usize = 4;
+const LEVEL_COUNT: usize = 6;
 
 pub(crate) const TILE_SIZE_U32: u32 = 16;
 pub(crate) const TILE_SIZE_F32: f32 = TILE_SIZE_U32 as f32;

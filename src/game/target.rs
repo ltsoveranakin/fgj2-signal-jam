@@ -36,6 +36,7 @@ impl Plugin for TargetPlugin {
 pub(super) struct GameTarget {
     pub(super) is_active: bool,
     pub(super) did_interact: bool,
+    interact_time: f32,
 }
 
 #[derive(Message, Default)]
@@ -48,6 +49,7 @@ fn spawn_startup_target(mut commands: Commands, asset_server: Res<AssetServer>) 
         GameTarget {
             is_active: false,
             did_interact: false,
+            interact_time: 0.0,
         },
         Sprite {
             image: target_image,
@@ -56,7 +58,7 @@ fn spawn_startup_target(mut commands: Commands, asset_server: Res<AssetServer>) 
         },
         Glow {
             is_glowing: false,
-            glow_color: LinearRgba::new(2.0, 4.0, 2.0, 1.0),
+            glow_color: LinearRgba::new(1.5, 2.0, 1.5, 1.0),
         },
         Transform::from_xyz(1000.0, 1000.0, TARGET_Z_COORD),
         Collider::capsule_x(2.5, 2.5),
@@ -122,13 +124,14 @@ fn interact_with_target(
     mut target_query: Query<(&mut GameTarget, &Transform), With<GameTarget>>,
     key_input: Res<ButtonInput<KeyCode>>,
     mouse_input: Res<ButtonInput<MouseButton>>,
+    time: Res<Time>,
     mut unlock_level_message: MessageWriter<UnlockLevelMessage>,
     mut spawn_dots_message: MessageWriter<SpawnDotsMessage>,
 ) {
     let player_transform = player_query.single().unwrap();
     let (mut target, target_transform) = target_query.single_mut().unwrap();
 
-    if !target.is_active || target.did_interact {
+    if !target.is_active || (target.did_interact && target.interact_time <= time.elapsed_secs()) {
         return;
     }
 
@@ -141,6 +144,7 @@ fn interact_with_target(
     if is_in_range
         && (key_input.just_pressed(KeyCode::KeyE) || mouse_input.just_pressed(MouseButton::Left))
     {
+        target.interact_time = 20.0;
         unlock_level_message.write_default();
         target.did_interact = true;
 

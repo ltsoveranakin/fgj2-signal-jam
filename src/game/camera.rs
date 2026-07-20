@@ -30,7 +30,7 @@ fn spawn_camera(mut commands: Commands) {
         Bloom::default(),
         Hdr,
         Projection::Orthographic(OrthographicProjection {
-            scale: 0.2,
+            scale: 0.13,
             ..OrthographicProjection::default_2d()
         }),
     ));
