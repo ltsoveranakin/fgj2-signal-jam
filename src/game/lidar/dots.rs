@@ -1,7 +1,7 @@
 use crate::assign_vec::AssignVec;
 use crate::control::inputs_allowed;
-use crate::game::level::WallType;
 use crate::game::level::create_level::LevelParent;
+use crate::game::level::WallType;
 use crate::game::player::{Player, PlayerFacing};
 use crate::game::target::{GameTarget, HitTargetMessage};
 use crate::game::z_coord::LIDAR_DOT_Z_COORD;
@@ -10,7 +10,7 @@ use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy_rapier2d::pipeline::QueryFilter;
 use bevy_rapier2d::prelude::*;
-use rand::{RngExt, rng};
+use rand::{rng, RngExt};
 use std::f32::consts::PI;
 
 pub(crate) const LIDAR_DOT_SPEED: f32 = 150.0;
@@ -19,7 +19,7 @@ const LIDAR_CONE: f32 = PI / 3.0;
 const WALL_DOT_ALIVE_TIME: f32 = 10.0;
 const LIDAR_DOT_ALIVE_TIME: f32 = 10.0;
 const BOUNCE_ALIVE_TIME_PENALTY: f32 = 0.3;
-const LIDAR_COOLDOWN: f32 = 5.0;
+const LIDAR_COOLDOWN: f32 = 2.5;
 
 pub(super) struct LidarDotsPlugin;
 

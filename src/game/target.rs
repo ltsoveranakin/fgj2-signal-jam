@@ -1,7 +1,7 @@
 use crate::game::glow::Glow;
-use crate::game::level::{LevelReadyMessage, TILE_SIZE_U32, UnlockLevelMessage};
-use crate::game::lidar::dots::{FadeDot, LIDAR_DOT_SPEED, SpawnDotsMessage};
-use crate::game::player::{PLAYER_INTERACT_RANGE, Player};
+use crate::game::level::{LevelReadyMessage, UnlockLevelMessage, TILE_SIZE_U32};
+use crate::game::lidar::dots::{FadeDot, SpawnDotsMessage, LIDAR_DOT_SPEED};
+use crate::game::player::{Player, PLAYER_INTERACT_RANGE};
 use crate::game::z_coord::TARGET_Z_COORD;
 use bevy::color::palettes::css;
 use bevy::math::FloatPow;
@@ -131,7 +131,7 @@ fn interact_with_target(
     let player_transform = player_query.single().unwrap();
     let (mut target, target_transform) = target_query.single_mut().unwrap();
 
-    if !target.is_active || (target.did_interact && target.interact_time <= time.elapsed_secs()) {
+    if !target.is_active || (target.did_interact && target.interact_time > time.elapsed_secs()) {
         return;
     }
 
@@ -144,7 +144,7 @@ fn interact_with_target(
     if is_in_range
         && (key_input.just_pressed(KeyCode::KeyE) || mouse_input.just_pressed(MouseButton::Left))
     {
-        target.interact_time = 20.0;
+        target.interact_time = time.elapsed_secs() + 20.0;
         unlock_level_message.write_default();
         target.did_interact = true;
 
