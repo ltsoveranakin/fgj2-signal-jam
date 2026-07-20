@@ -95,11 +95,15 @@ fn fade_target(mut target_query: Query<(&mut GameTarget, &mut Sprite)>, time: Re
         game_target.is_active = true;
     }
 
-    let alpha_delta_sign = if game_target.is_active { 1.0 } else { -1.0 };
+    let alpha_delta = if game_target.is_active {
+        alpha_delta_magnitude
+    } else {
+        -alpha_delta_magnitude
+    };
 
     target_sprite
         .color
-        .set_alpha((alpha + (alpha_delta_magnitude * alpha_delta_sign)).clamp(0.0, 1.0));
+        .set_alpha((alpha + alpha_delta).clamp(0.0, 1.0));
 }
 
 fn interact_with_target(

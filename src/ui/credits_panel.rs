@@ -1,6 +1,6 @@
-use crate::control::inputs_allowed;
+use crate::control::is_playing;
+use crate::ui::start_menu::StartMenuContainer;
 use bevy::prelude::*;
-use bevy::ui::FocusPolicy;
 
 pub(super) struct CreditsPanelPlugin;
 
@@ -12,7 +12,7 @@ impl Plugin for CreditsPanelPlugin {
             Update,
             (
                 spawn_credits_panel.run_if(on_message::<ShowCreditsMessage>),
-                credits_panel_click.run_if(not(inputs_allowed)),
+                close_credits.run_if(not(is_playing)),
             ),
         );
     }
@@ -24,7 +24,14 @@ pub(super) struct ShowCreditsMessage;
 #[derive(Component)]
 struct CreditsPanelContainer;
 
-fn spawn_credits_panel(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn spawn_credits_panel(
+    mut commands: Commands,
+    mut start_container_query: Query<&mut Node, With<StartMenuContainer>>,
+    asset_server: Res<AssetServer>,
+) {
+    let mut start_container_node = start_container_query.single_mut().unwrap();
+    start_container_node.display = Display::None;
+
     commands
         .spawn((
             CreditsPanelContainer,
@@ -36,8 +43,6 @@ fn spawn_credits_panel(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ..default()
             },
             BackgroundColor(Color::BLACK.with_alpha(0.6)),
-            FocusPolicy::Block,
-            Button,
         ))
         .with_child((
             Node {
@@ -49,34 +54,20 @@ fn spawn_credits_panel(mut commands: Commands, asset_server: Res<AssetServer>) {
         ));
 }
 
-fn credits_panel_click(
+fn close_credits(
     mut commands: Commands,
-    mut credits_container_interaction_query: Query<
-        &Interaction,
-        (Changed<Interaction>, With<CreditsPanelContainer>),
-    >,
     credits_container_query: Query<Entity, With<CreditsPanelContainer>>,
+    mut start_container_query: Query<&mut Node, With<StartMenuContainer>>,
     key_input: Res<ButtonInput<KeyCode>>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
 ) {
-    let mut should_close = false;
-
-    for interaction in credits_container_interaction_query.iter_mut() {
-        if *interaction == Interaction::Pressed {
-            should_close = true;
-        }
-    }
-
-    if key_input.any_just_pressed([
-        KeyCode::Escape,
-        KeyCode::Space,
-        KeyCode::Enter,
-        KeyCode::KeyE,
-    ]) {
-        should_close = true;
-    }
-
-    if should_close {
+    if key_input.any_just_pressed([KeyCode::Enter, KeyCode::Space, KeyCode::Escape])
+        || mouse_input.just_pressed(MouseButton::Left)
+    {
         if let Ok(container_entity) = credits_container_query.single() {
+            let mut start_container_node = start_container_query.single_mut().unwrap();
+            start_container_node.display = Display::Flex;
+
             commands.entity(container_entity).despawn();
         }
     }

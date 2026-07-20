@@ -1,10 +1,12 @@
 mod assign_vec;
+mod audio;
 mod control;
 mod debug;
 mod game;
 mod sprite_sheet;
 mod ui;
 
+use crate::audio::GameAudioPlugin;
 use crate::control::ControlPlugin;
 use crate::debug::DebugPlugin;
 use crate::game::GamePlugin;
@@ -19,7 +21,7 @@ fn main() {
     app.add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest())) // def plugins
         .add_plugins((TilemapPlugin, RapierPhysicsPlugin::<NoUserData>::default())) // lib plugins
         .add_plugins(DebugPlugin) // dbg tgl plugin
-        .add_plugins((GamePlugin, GameUIPlugin, ControlPlugin)); // main game plugins
+        .add_plugins((GamePlugin, GameUIPlugin, ControlPlugin, GameAudioPlugin)); // main game plugins
 
     app.run();
 }

@@ -19,7 +19,11 @@ pub(super) fn inputs_allowed(
     story_board_query: Query<&Node, With<StoryBoard>>,
     game_state: Res<State<GameState>>,
 ) -> bool {
-    *game_state == GameState::Playing && !story_board_shown(story_board_query)
+    is_playing(game_state) && !story_board_shown(story_board_query)
+}
+
+pub(super) fn is_playing(game_state: Res<State<GameState>>) -> bool {
+    *game_state == GameState::Playing
 }
 
 pub(super) fn story_board_shown(story_board_query: Query<&Node, With<StoryBoard>>) -> bool {
