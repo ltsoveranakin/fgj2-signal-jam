@@ -1,9 +1,14 @@
 use crate::control::GameState;
 use crate::sprite_sheet::story_panel_rect_from_sheet;
+use bevy::audio::{PlaybackMode, Volume};
+use std::time::Duration;
 
+use crate::audio::FadeAudio;
+use crate::ui::start_menu::StartMenuContainer;
 use bevy::prelude::*;
 
 const TOTAL_STORY_PANELS: usize = 2;
+const MENU_VOLUME: f32 = 0.2;
 
 pub(super) struct StoryPanelPlugin;
 
@@ -16,7 +21,7 @@ impl Plugin for StoryPanelPlugin {
             Update,
             (
                 show_story_panel.run_if(on_message::<ShowStoryPanelMessage>),
-                game_start.run_if(on_message::<StartGameMessage>),
+                (mute_menu_music, game_start).run_if(on_message::<StartGameMessage>),
                 story_panel_clicked,
             ),
         );
@@ -30,7 +35,7 @@ struct StoryPanelContainer;
 pub(crate) struct StartGameMessage;
 
 #[derive(Message, Default)]
-pub(super) struct ShowStoryPanelMessage;
+pub(crate) struct ShowStoryPanelMessage;
 
 #[derive(Component)]
 pub(super) struct StoryPanel {
@@ -65,10 +70,37 @@ fn spawn_story_panel(mut commands: Commands, asset_server: Res<AssetServer>) {
         ));
 }
 
-fn show_story_panel(mut story_panel_container_query: Query<&mut Node, With<StoryPanelContainer>>) {
-    let mut container_node = story_panel_container_query.single_mut().unwrap();
+fn show_story_panel(
+    mut commands: Commands,
+    mut story_panel_container_query: Query<(Entity, &mut Node), With<StoryPanelContainer>>,
+    asset_server: Res<AssetServer>,
+) {
+    let (entity, mut container_node) = story_panel_container_query.single_mut().unwrap();
+
+    commands.entity(entity).insert((
+        AudioPlayer::new(asset_server.load("audio/music/spacey_suspence.mp3")),
+        PlaybackSettings {
+            mode: PlaybackMode::Loop,
+            volume: Volume::Linear(0.0),
+            start_position: Some(Duration::from_secs_f32(1.5)),
+            duration: Some(Duration::from_mins(2)),
+            ..default()
+        },
+        FadeAudio::fade_in(MENU_VOLUME),
+    ));
 
     container_node.display = Display::Flex;
+}
+
+fn mute_menu_music(
+    mut commands: Commands,
+    mut menu_query: Query<Entity, With<StartMenuContainer>>,
+) {
+    let entity = menu_query.single_mut().unwrap();
+
+    commands
+        .entity(entity)
+        .insert(FadeAudio::fade_out(MENU_VOLUME));
 }
 
 fn game_start(

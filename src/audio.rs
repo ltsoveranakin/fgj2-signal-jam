@@ -79,7 +79,7 @@ struct MainGameMusic;
 fn play_music_on_game_play(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         MainGameMusic,
-        AudioPlayer::new(asset_server.load("audio/music/sector.ogg")),
+        AudioPlayer::new(asset_server.load("audio/music/sector.mp3")),
         PlaybackSettings::LOOP,
         FadeAudio::fade_in(1.5),
     ));

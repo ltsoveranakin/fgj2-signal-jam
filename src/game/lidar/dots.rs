@@ -5,7 +5,7 @@ use crate::game::level::create_level::LevelParent;
 use crate::game::player::{Player, PlayerFacing};
 use crate::game::target::{GameTarget, HitTargetMessage};
 use crate::game::z_coord::LIDAR_DOT_Z_COORD;
-use bevy::audio::Volume;
+use bevy::audio::{PlaybackMode, Volume};
 use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy_rapier2d::pipeline::QueryFilter;
@@ -28,8 +28,6 @@ impl Plugin for LidarDotsPlugin {
         app.add_message::<SpawnDotsMessage>();
 
         app.init_resource::<LidarNextUseTime>();
-
-        app.add_systems(Startup, load_ping_sound);
 
         app.add_systems(
             Update,
@@ -88,18 +86,10 @@ pub(crate) struct SpawnDotsMessage {
     pub(crate) fade: FadeDot,
 }
 
-#[derive(Resource)]
-struct PingSound(Handle<AudioSource>);
-
-fn load_ping_sound(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.insert_resource(PingSound(asset_server.load("audio/sfx/sonar_ping.ogg")));
-}
-
 fn spawn_dots(
     mut commands: Commands,
     level_parent_query: Query<Entity, With<LevelParent>>,
     asset_server: Res<AssetServer>,
-    ping_sound: Res<PingSound>,
     mut lidar_dot_sprite_cache: Local<Option<Handle<Image>>>,
     mut spawn_dots_message: MessageReader<SpawnDotsMessage>,
 ) {
@@ -112,7 +102,6 @@ fn spawn_dots(
         let step = (spawn_dots.fov) / (spawn_dots.dot_count as f32);
 
         let parent_entity = level_parent_query.single().unwrap();
-        let ping_audio_handle = ping_sound.0.clone();
 
         commands.entity(parent_entity).with_children(move |parent| {
             for i in 0..spawn_dots.dot_count {
@@ -135,10 +124,6 @@ fn spawn_dots(
                         ..default()
                     },
                     spawn_dots.fade,
-                    AudioPlayer(ping_audio_handle.clone()),
-                    PlaybackSettings::default()
-                        .paused()
-                        .with_volume(Volume::Linear(0.15)),
                 ));
             }
         });
@@ -172,19 +157,14 @@ fn shoot_lidar(
 
 fn move_dots(
     mut commands: Commands,
-    mut dot_query: Query<(
-        Entity,
-        &mut LidarDot,
-        &mut FadeDot,
-        &mut Transform,
-        &AudioSink,
-    )>,
+    mut dot_query: Query<(Entity, &mut LidarDot, &mut FadeDot, &mut Transform)>,
     player_query: Query<Entity, With<Player>>,
     target_query: Query<(Entity, &GameTarget)>,
     wall_type_query: Query<&WallType>,
     level_parent_query: Query<Entity, With<LevelParent>>,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
+    mut target_ping: Local<Option<Handle<AudioSource>>>,
     mut hit_target_message: MessageWriter<HitTargetMessage>,
     rapier_context: ReadRapierContext,
 ) {
@@ -192,9 +172,7 @@ fn move_dots(
     let (target_entity, target) = target_query.single().unwrap();
     let rapier_context = rapier_context.single().unwrap();
 
-    for (dot_entity, mut lidar_dot, mut fade_dot, mut dot_transform, audio_sink) in
-        dot_query.iter_mut()
-    {
+    for (dot_entity, mut lidar_dot, mut fade_dot, mut dot_transform) in dot_query.iter_mut() {
         let current_dot_position = dot_transform.translation.truncate();
 
         let solid = true;
@@ -252,7 +230,17 @@ fn move_dots(
         if entity_hit == target_entity {
             absorbed = Some(FadeDot::new_alpha(1.5, css::YELLOW));
             hit_target_message.write_default();
-            audio_sink.play();
+            let sonar_ping =
+                target_ping.get_or_insert_with(|| asset_server.load("audio/sfx/sonar_ping.mp3"));
+
+            commands.entity(dot_entity).insert_if_new((
+                AudioPlayer::new(sonar_ping.clone()),
+                PlaybackSettings {
+                    volume: Volume::Linear(0.15),
+                    mode: PlaybackMode::Remove,
+                    ..default()
+                },
+            ));
         }
 
         if let Some(absorbed) = absorbed {

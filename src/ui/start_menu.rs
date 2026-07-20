@@ -1,13 +1,8 @@
-use crate::audio::FadeAudio;
 use crate::ui::TITLE_FONT_SIZE;
 use crate::ui::credits_panel::ShowCreditsMessage;
 use crate::ui::story_panel::{ShowStoryPanelMessage, StartGameMessage};
-use bevy::audio::{PlaybackMode, Volume};
 use bevy::color::palettes::css;
 use bevy::prelude::*;
-use std::time::Duration;
-
-const MENU_VOLUME: f32 = 0.2;
 
 pub(super) struct StartMenuPlugin;
 
@@ -20,7 +15,6 @@ impl Plugin for StartMenuPlugin {
                 maze_button_click,
                 credits_button_click,
                 hide_root_ui_on_game_start.run_if(on_message::<ShowStoryPanelMessage>),
-                mute_menu_music.run_if(on_message::<StartGameMessage>),
             ),
         );
     }
@@ -51,15 +45,6 @@ fn spawn_ui_elements(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         },
         ImageNode::new(bg_image),
-        AudioPlayer::new(asset_server.load("audio/music/spacey_suspence.ogg")),
-        PlaybackSettings {
-            mode: PlaybackMode::Loop,
-            volume: Volume::Linear(0.0),
-            start_position: Some(Duration::from_secs_f32(1.5)),
-            duration: Some(Duration::from_mins(2)),
-            ..default()
-        },
-        FadeAudio::fade_in(MENU_VOLUME),
         children![(
             Node {
                 width: percent(27),
@@ -84,17 +69,6 @@ fn spawn_ui_elements(mut commands: Commands, asset_server: Res<AssetServer>) {
             ]
         )],
     ));
-}
-
-fn mute_menu_music(
-    mut commands: Commands,
-    mut menu_query: Query<Entity, With<StartMenuContainer>>,
-) {
-    let entity = menu_query.single_mut().unwrap();
-
-    commands
-        .entity(entity)
-        .insert(FadeAudio::fade_out(MENU_VOLUME));
 }
 
 fn hide_root_ui_on_game_start(

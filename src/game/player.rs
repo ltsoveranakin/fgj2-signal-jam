@@ -77,6 +77,7 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         Sprite {
             image: asset_server.load("image/character/player.png"),
             rect: Some(player_rect_from_sheet(0)),
+            flip_x: true,
             ..default()
         },
         Visibility::Hidden,

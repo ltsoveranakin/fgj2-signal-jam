@@ -55,8 +55,7 @@ fn spawn_story_root_ui_components(mut commands: Commands, asset_server: Res<Asse
         ))
         .with_child((
             Node {
-                width: percent(100),
-                height: percent(10),
+                width: percent(50),
                 ..default()
             },
             ImageNode {
@@ -129,7 +128,7 @@ fn enter_story_board(
     mut board_query: Query<&mut StoryBoard>,
     key_input: Res<ButtonInput<KeyCode>>,
 ) {
-    if key_input.just_pressed(KeyCode::Enter) {
+    if key_input.any_just_pressed([KeyCode::Enter, KeyCode::Space]) {
         let mut story_board = board_query.single_mut().unwrap();
         story_board.advance();
     }
