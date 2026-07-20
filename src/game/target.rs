@@ -1,6 +1,5 @@
-use crate::game::level::UnlockLevelMessage;
-use crate::game::maze::LevelReadyMessage;
-use crate::game::maze::generator::TILE_SIZE_U32;
+use crate::game::level::{LevelReadyMessage, TILE_SIZE_U32, UnlockLevelMessage};
+
 use crate::game::player::{PLAYER_INTERACT_RANGE, Player};
 use crate::game::z_coord::TARGET_Z_COORD;
 use bevy::math::FloatPow;

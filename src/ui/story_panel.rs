@@ -26,11 +26,8 @@ impl Plugin for StoryPanelPlugin {
 #[derive(Component)]
 struct StoryPanelContainer;
 
-#[derive(Message, Eq, PartialEq)]
-pub(crate) enum StartGameMessage {
-    Normal,
-    Maze,
-}
+#[derive(Message, Default, Eq, PartialEq)]
+pub(crate) struct StartGameMessage;
 
 #[derive(Message, Default)]
 pub(super) struct ShowStoryPanelMessage;
@@ -97,7 +94,7 @@ fn story_panel_clicked(
             story_panel.index += 1;
 
             if story_panel.index == TOTAL_STORY_PANELS {
-                start_game_message.write(StartGameMessage::Normal);
+                start_game_message.write_default();
                 return;
             }
 

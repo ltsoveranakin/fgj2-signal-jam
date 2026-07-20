@@ -122,7 +122,7 @@ fn maze_button_click(
 ) {
     for interaction in start_button_query.iter() {
         if *interaction == Interaction::Pressed {
-            start_game_message.write(StartGameMessage::Maze);
+            start_game_message.write_default();
         }
     }
 }

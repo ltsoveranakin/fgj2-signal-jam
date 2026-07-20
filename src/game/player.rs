@@ -1,8 +1,7 @@
 use crate::control::inputs_allowed;
-use crate::game::level::CurrentLevel;
 use crate::game::level::create_level::NextLevelSensor;
-use crate::game::maze::LevelReadyMessage;
-use crate::game::maze::generator::{HALF_TILE_SIZE_F32, TILE_SIZE_U32};
+use crate::game::level::{CurrentLevel, HALF_TILE_SIZE_F32, LevelReadyMessage, TILE_SIZE_U32};
+
 use crate::game::story_board::StoryBoard;
 use crate::game::z_coord::PLAYER_Z_COORD;
 use bevy::prelude::*;

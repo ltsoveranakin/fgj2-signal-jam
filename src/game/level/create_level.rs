@@ -1,6 +1,7 @@
-use crate::game::level::{CurrentLevel, LevelData, LevelsData, WallType};
-use crate::game::maze::LevelReadyMessage;
-use crate::game::maze::generator::{HALF_TILE_SIZE_F32, TILE_SIZE_F32};
+use crate::game::level::{
+    CurrentLevel, HALF_TILE_SIZE_F32, LevelData, LevelReadyMessage, LevelsData, TILE_SIZE_F32,
+    WallType,
+};
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use std::collections::HashMap;

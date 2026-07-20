@@ -1,5 +1,5 @@
 use crate::control::story_board_shown;
-use crate::game::maze::LevelReadyMessage;
+use crate::game::level::LevelReadyMessage;
 use crate::sprite_sheet::story_board_rect_from_sheet;
 use bevy::prelude::*;
 use std::ops::RangeInclusive;

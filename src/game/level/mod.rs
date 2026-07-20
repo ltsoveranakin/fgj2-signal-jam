@@ -2,15 +2,19 @@ pub(super) mod create_level;
 
 use crate::game::level::create_level::{CreateLevelPlugin, UnlockingBorder};
 
+use crate::ui::story_panel::StartGameMessage;
+use bevy::math::USizeVec2;
 use bevy::prelude::*;
 use bevy_common_assets::json::JsonAssetPlugin;
-use bevy_rapier2d::prelude::{Collider, ColliderDisabled};
+use bevy_rapier2d::prelude::*;
 use serde::Deserialize;
 use std::ops::RangeInclusive;
 
-use crate::ui::story_panel::StartGameMessage;
+const LEVEL_COUNT: usize = 2;
 
-static LEVEL_COUNT: usize = 2;
+pub(crate) const TILE_SIZE_U32: u32 = 16;
+pub(crate) const TILE_SIZE_F32: f32 = TILE_SIZE_U32 as f32;
+pub(crate) const HALF_TILE_SIZE_F32: f32 = (TILE_SIZE_U32 / 2) as f32;
 
 pub(super) struct LevelPlugin;
 
@@ -19,14 +23,27 @@ impl Plugin for LevelPlugin {
         app.add_plugins(JsonAssetPlugin::<LevelData>::new(&["json"]))
             .add_plugins(CreateLevelPlugin);
 
+        app.add_message::<UnlockLevelMessage>()
+            .add_message::<LevelReadyMessage>();
+
         app.init_resource::<LevelsData>()
             .init_resource::<CurrentLevel>();
 
-        app.add_message::<UnlockLevelMessage>();
-
-        app.add_systems(Startup, load_levels)
-            .add_systems(Update, (rcv_start_game, unlock_level));
+        app.add_systems(Startup, load_levels).add_systems(
+            Update,
+            (
+                rcv_start_game.run_if(on_message::<StartGameMessage>),
+                unlock_level,
+            ),
+        );
     }
+}
+
+#[derive(Message)]
+pub(super) struct LevelReadyMessage {
+    pub(super) player: USizeVec2,
+    pub(super) target: USizeVec2,
+    pub(super) story_index_range: Option<RangeInclusive<usize>>,
 }
 
 #[derive(Resource, Default, Debug)]
@@ -100,15 +117,8 @@ fn load_levels(mut levels_data: ResMut<LevelsData>, assert_server: Res<AssetServ
     }
 }
 
-fn rcv_start_game(
-    mut start_game_message: MessageReader<StartGameMessage>,
-    mut current_level: ResMut<CurrentLevel>,
-) {
-    for start_game in start_game_message.read() {
-        if *start_game == StartGameMessage::Normal {
-            current_level.0 = Some(0);
-        }
-    }
+fn rcv_start_game(mut current_level: ResMut<CurrentLevel>) {
+    current_level.0 = Some(0);
 }
 
 fn unlock_level(
