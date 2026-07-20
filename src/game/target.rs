@@ -1,13 +1,13 @@
-use crate::game::level::{LevelReadyMessage, TILE_SIZE_U32, UnlockLevelMessage};
-use std::f32::consts::PI;
-
 use crate::game::glow::Glow;
-use crate::game::lidar::dots::SpawnDotsMessage;
+use crate::game::level::{LevelReadyMessage, TILE_SIZE_U32, UnlockLevelMessage};
+use crate::game::lidar::dots::{FadeDot, LIDAR_DOT_SPEED, SpawnDotsMessage};
 use crate::game::player::{PLAYER_INTERACT_RANGE, Player};
 use crate::game::z_coord::TARGET_Z_COORD;
+use bevy::color::palettes::css;
 use bevy::math::FloatPow;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
+use std::f32::consts::PI;
 
 const FADE_PER_SEC: f32 = 0.15;
 const TARGET_HIT_INC_ALPHA: f32 = 0.05;
@@ -149,7 +149,8 @@ fn interact_with_target(
             fov: PI * 2.0,
             direction: 0.0,
             dot_count: 100,
-            alive_time: 30.0,
+            speed: LIDAR_DOT_SPEED * 0.2,
+            fade: FadeDot::new_alpha(30.0, css::YELLOW),
         });
     }
 }

@@ -10,9 +10,10 @@ use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy_rapier2d::pipeline::QueryFilter;
 use bevy_rapier2d::prelude::*;
+use rand::{RngExt, rng};
 use std::f32::consts::PI;
 
-const LIDAR_DOT_SPEED: f32 = 150.0;
+pub(crate) const LIDAR_DOT_SPEED: f32 = 150.0;
 const LIDAR_DOTS_COUNT: usize = 20;
 const LIDAR_CONE: f32 = PI / 3.0;
 const WALL_DOT_ALIVE_TIME: f32 = 10.0;
@@ -46,10 +47,11 @@ impl Plugin for LidarDotsPlugin {
 struct LidarDot {
     direction: Vec2,
     last_entity_hit: Entity,
+    speed: f32,
 }
 
-#[derive(Component)]
-struct FadeDot {
+#[derive(Component, Copy, Clone)]
+pub(crate) struct FadeDot {
     total_fade_time: f32,
     fade_time_elapsed: f32,
     fade_from: Color,
@@ -57,7 +59,7 @@ struct FadeDot {
 }
 
 impl FadeDot {
-    fn new_alpha(total_fade_time: f32, fade_from: impl Into<Color>) -> Self {
+    pub(crate) fn new_alpha(total_fade_time: f32, fade_from: impl Into<Color>) -> Self {
         let fade_from = fade_from.into();
 
         Self::new(total_fade_time, fade_from, fade_from.with_alpha(0.0))
@@ -82,7 +84,8 @@ pub(crate) struct SpawnDotsMessage {
     pub(crate) fov: f32,
     pub(crate) direction: f32,
     pub(crate) dot_count: usize,
-    pub(crate) alive_time: f32,
+    pub(crate) speed: f32,
+    pub(crate) fade: FadeDot,
 }
 
 #[derive(Resource)]
@@ -113,13 +116,17 @@ fn spawn_dots(
 
         commands.entity(parent_entity).with_children(move |parent| {
             for i in 0..spawn_dots.dot_count {
-                let angle = (i as f32 * step) + (spawn_dots.fov * -0.5) + spawn_dots.direction;
+                let angle = (i as f32 * step)
+                    + (spawn_dots.fov * -0.5)
+                    + spawn_dots.direction
+                    + rng().random_range(step..=step);
                 let direction = Vec2::from_angle(angle);
 
                 parent.spawn((
                     LidarDot {
                         direction,
                         last_entity_hit: Entity::PLACEHOLDER,
+                        speed: spawn_dots.speed,
                     },
                     Sprite::from_image(lidar_dot_sprite.clone()),
                     Transform {
@@ -127,11 +134,11 @@ fn spawn_dots(
                         scale: Vec3::splat(0.5),
                         ..default()
                     },
-                    FadeDot::new_alpha(spawn_dots.alive_time, css::RED),
+                    spawn_dots.fade,
                     AudioPlayer(ping_audio_handle.clone()),
                     PlaybackSettings::default()
                         .paused()
-                        .with_volume(Volume::Linear(0.25)),
+                        .with_volume(Volume::Linear(0.15)),
                 ));
             }
         });
@@ -156,7 +163,8 @@ fn shoot_lidar(
         fov: LIDAR_CONE,
         direction: facing.direction().to_angle(),
         dot_count: LIDAR_DOTS_COUNT,
-        alive_time: LIDAR_DOT_ALIVE_TIME,
+        speed: LIDAR_DOT_SPEED,
+        fade: FadeDot::new_alpha(LIDAR_DOT_ALIVE_TIME, css::RED),
     });
 
     lidar_next_use_time.0 = time.elapsed_secs() + LIDAR_COOLDOWN;
@@ -184,8 +192,6 @@ fn move_dots(
     let (target_entity, target) = target_query.single().unwrap();
     let rapier_context = rapier_context.single().unwrap();
 
-    let toi: bevy_rapier2d::prelude::Real = LIDAR_DOT_SPEED * time.delta_secs();
-
     for (dot_entity, mut lidar_dot, mut fade_dot, mut dot_transform, audio_sink) in
         dot_query.iter_mut()
     {
@@ -206,7 +212,9 @@ fn move_dots(
             .exclude_collider(player_entity)
             .predicate(&predicate);
 
-        debug_assert!(lidar_dot.direction.is_normalized());
+        // debug_assert!(lidar_dot.direction.is_normalized());
+
+        let toi: bevy_rapier2d::prelude::Real = lidar_dot.speed * time.delta_secs();
 
         let (entity_hit, hit_result) = if let Some(result) = rapier_context.cast_ray_and_get_normal(
             current_dot_position,

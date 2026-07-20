@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 const PLAYER_SPEED: f32 = 75.0;
-pub(super) const PLAYER_INTERACT_RANGE: f32 = TILE_SIZE_F32;
+pub(super) const PLAYER_INTERACT_RANGE: f32 = TILE_SIZE_F32 * 1.5;
 
 pub(super) struct PlayerPlugin;
 
