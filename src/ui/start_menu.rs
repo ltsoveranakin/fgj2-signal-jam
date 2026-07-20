@@ -1,7 +1,6 @@
 use crate::audio::FadeAudio;
 use crate::ui::credits_panel::ShowCreditsMessage;
-use crate::ui::story_panel::ShowStoryPanelMessage;
-pub(crate) use crate::ui::story_panel::StartGameMessage;
+use crate::ui::story_panel::{ShowStoryPanelMessage, StartGameMessage};
 use bevy::audio::{PlaybackMode, Volume};
 use bevy::color::palettes::css;
 use bevy::prelude::*;

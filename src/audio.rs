@@ -1,3 +1,4 @@
+use crate::ui::story_panel::StartGameMessage;
 use bevy::audio::Volume;
 use bevy::prelude::*;
 
@@ -7,7 +8,13 @@ pub(super) struct GameAudioPlugin;
 
 impl Plugin for GameAudioPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, fade_audio);
+        app.add_systems(
+            Update,
+            (
+                fade_audio,
+                play_music_on_game_play.run_if(on_message::<StartGameMessage>),
+            ),
+        );
     }
 }
 
@@ -64,4 +71,16 @@ fn fade_audio(
             commands.entity(entity).remove::<FadeAudio>();
         }
     }
+}
+
+#[derive(Component)]
+struct MainGameMusic;
+
+fn play_music_on_game_play(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        MainGameMusic,
+        AudioPlayer::new(asset_server.load("audio/music/sector.ogg")),
+        PlaybackSettings::LOOP,
+        FadeAudio::fade_in(1.0),
+    ));
 }

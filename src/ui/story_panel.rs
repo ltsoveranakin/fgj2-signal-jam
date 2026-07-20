@@ -1,6 +1,6 @@
 use crate::control::GameState;
 use crate::sprite_sheet::story_panel_rect_from_sheet;
-use bevy::asset::ErasedAssetLoader;
+
 use bevy::prelude::*;
 
 const TOTAL_STORY_PANELS: usize = 2;
