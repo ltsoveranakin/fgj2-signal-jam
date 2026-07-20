@@ -19,7 +19,7 @@ impl Plugin for CreditsPanelPlugin {
 }
 
 #[derive(Message, Default)]
-pub(super) struct ShowCreditsMessage;
+pub(crate) struct ShowCreditsMessage;
 
 #[derive(Component)]
 struct CreditsPanelContainer;
@@ -43,6 +43,7 @@ fn spawn_credits_panel(
                 ..default()
             },
             BackgroundColor(Color::BLACK.with_alpha(0.6)),
+            ZIndex(10),
         ))
         .with_child((
             Node {

@@ -1,4 +1,5 @@
 use crate::audio::FadeAudio;
+use crate::ui::TITLE_FONT_SIZE;
 use crate::ui::credits_panel::ShowCreditsMessage;
 use crate::ui::story_panel::{ShowStoryPanelMessage, StartGameMessage};
 use bevy::audio::{PlaybackMode, Volume};
@@ -75,7 +76,7 @@ fn spawn_ui_elements(mut commands: Commands, asset_server: Res<AssetServer>) {
                         offset: Vec2::splat(1.0),
                         color: css::GREY.into()
                     },
-                    TextFont::from_font_size(FontSize::Rem(2.4))
+                    TextFont::from_font_size(TITLE_FONT_SIZE)
                 ),
                 button("Play", Display::Flex, PlayButton),
                 button("Maze", Display::None, MazeButton),

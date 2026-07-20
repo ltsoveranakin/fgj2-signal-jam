@@ -2,6 +2,7 @@ use crate::control::inputs_allowed;
 use crate::game::level::create_level::NextLevelSensor;
 use crate::game::level::{CurrentLevel, LevelReadyMessage, TILE_SIZE_F32, TILE_SIZE_U32};
 
+use crate::assign_vec::AssignVec;
 use crate::game::z_coord::PLAYER_Z_COORD;
 use crate::sprite_sheet::player_rect_from_sheet;
 use bevy::prelude::*;
@@ -18,7 +19,11 @@ impl Plugin for PlayerPlugin {
             Update,
             (
                 place_player_in_maze,
-                move_player.run_if(inputs_allowed),
+                (
+                    move_player.run_if(inputs_allowed),
+                    reset_player_velocity.run_if(not(inputs_allowed)),
+                )
+                    .chain(),
                 player_touch_level_progress,
             ),
         );
@@ -125,6 +130,11 @@ fn move_player(
     player_velocity.linear = move_dir;
 }
 
+fn reset_player_velocity(mut player_query: Query<&mut Velocity, With<Player>>) {
+    let mut player_velocity = player_query.single_mut().unwrap();
+    player_velocity.linear = Vec2::ZERO;
+}
+
 fn place_player_in_maze(
     mut player_query: Query<(&mut Transform, &mut Visibility), With<Player>>,
     mut level_ready_message: MessageReader<LevelReadyMessage>,
@@ -143,6 +153,7 @@ fn place_player_in_maze(
 fn player_touch_level_progress(
     player_marker_query: Query<(), With<Player>>,
     level_end_marker_query: Query<(), With<NextLevelSensor>>,
+    mut player_transform_query: Query<&mut Transform, With<Player>>,
     mut current_level: ResMut<CurrentLevel>,
     mut collision_event: MessageReader<CollisionEvent>,
 ) {
@@ -155,6 +166,11 @@ fn player_touch_level_progress(
                     &player_marker_query,
                     &level_end_marker_query,
                 ) {
+                    player_transform_query
+                        .single_mut()
+                        .unwrap()
+                        .translation
+                        .assign_from(Vec2::splat(1000.0));
                     current_level.next();
                 }
             }

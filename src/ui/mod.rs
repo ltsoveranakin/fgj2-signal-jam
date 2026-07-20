@@ -1,4 +1,4 @@
-mod credits_panel;
+pub(crate) mod credits_panel;
 pub(super) mod start_menu;
 pub(super) mod story_panel;
 
@@ -7,6 +7,8 @@ use crate::ui::start_menu::StartMenuPlugin;
 use crate::ui::story_panel::StoryPanelPlugin;
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, PrimaryWindow, SystemCursorIcon};
+
+pub(super) const TITLE_FONT_SIZE: FontSize = FontSize::Rem(2.4);
 
 pub(super) struct GameUIPlugin;
 

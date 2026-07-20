@@ -2,6 +2,7 @@ use crate::game::level::{
     CurrentLevel, HALF_TILE_SIZE_F32, LevelData, LevelReadyMessage, LevelsData, TILE_SIZE_F32,
     WallType,
 };
+use crate::game::outro::GameFinished;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use std::collections::HashMap;
@@ -33,6 +34,7 @@ fn create_level(
     current_level: Res<CurrentLevel>,
     level_assets: ResMut<Assets<LevelData>>,
     mut level_ready_message: MessageWriter<LevelReadyMessage>,
+    mut game_finished: ResMut<GameFinished>,
 ) {
     let level_index = if let Some(level) = current_level.0 {
         level
@@ -42,6 +44,11 @@ fn create_level(
 
     for old_parent_entity in level_parent_query.iter() {
         commands.entity(old_parent_entity).despawn();
+    }
+
+    if level_index >= levels_data.levels.len() {
+        game_finished.is_finished = true;
+        return;
     }
 
     commands
