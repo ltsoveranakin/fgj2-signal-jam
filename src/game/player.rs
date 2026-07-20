@@ -87,7 +87,6 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn move_player(
     mut player_query: Query<(&mut Velocity, &mut PlayerFacing, &mut Sprite)>,
-
     key_input: Res<ButtonInput<KeyCode>>,
 ) {
     let (mut player_velocity, mut player_facing, mut player_sprite) =

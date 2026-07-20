@@ -47,7 +47,7 @@ fn spawn_startup_target(mut commands: Commands, asset_server: Res<AssetServer>) 
             ..default()
         },
         Transform::from_xyz(1000.0, 1000.0, TARGET_Z_COORD),
-        Collider::capsule_x(6.0, 3.0),
+        Collider::capsule_x(3.0, 3.0),
         Sensor,
     ));
 }

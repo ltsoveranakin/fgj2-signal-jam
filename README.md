@@ -1,4 +1,5 @@
 TODO:
-Player sprites
 Levels
 Dialog for levels
+Glow to exit
+Glow to target
