@@ -1,2 +1,1 @@
-TODO:
-ending (im bad at ending)
+Game jam entry inspired by lidar
